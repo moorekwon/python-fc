@@ -708,7 +708,7 @@ python manage.py shell
 
 # 데이터베이스에서 user 확인
 >>> User.objects.all()
-# <QuerySet [<User: ola>]> -> 슈퍼유저로 등록했었언 사용자
+# <QuerySet [<User: ola>]> -> 슈퍼유저로 등록했었던 사용자
 
 # 사용자이름이 'ola'인 User 인스턴스 가져오기
 >>> me = User.objects.get(username='ola')
@@ -723,25 +723,219 @@ Post.objects.create(author=me, title='Sample title', text='Test')
 
 
 
-[DjangoGirls/ Django ORM(Querysets)](https://tutorial.djangogirls.org/ko/django_orm/)
-
-### 글 더 추가하기
-
 ### 필터링하기
+
+데이터를 필터링
+
+- 쿼리셋의 중요한 기능
+- `fileter` 사용
+
+```bash
+# 괄호 안에 원하는 조건(작성자가 나인 조건)을 넣어줌
+>>> Post.objects.filter(author=me)
+
+# 모든 글들 중 제목(title)에 'title' 글자가 들어간 글들만 뽑아냄
+# 필드 이름("title")과 연산자과 필터("contains")를 __로 구분
+>>> Post.objects.filter(title__contains='title')
+
+# 게시일(published_date)로 과거에 작성한 글 필터링
+>>> from django.utils import timezone
+>>> Post.objects.filter(published_date__lte=timezone.now())
+# []
+
+# 파이썬 콘솔에서 추가한 게시물이 보이지 않으므로, 먼저 게시하려는 게시물의 인스턴스를 얻음
+>>> post = Post.objects.get(title="Sample title")
+
+# publish 메소드를 사용해 게시
+>>> post.publish()
+
+# 다시 게시된 글의 목록 가져옴
+>>> Post.objects.filter(published_date__lte=timezone.now())
+# [<Post: Sample title>]
+```
+
+
 
 ### 정렬하기
 
+쿼리셋은 객체 목록을 정렬할 수 있음
+
+```bash
+# created_date 필드를 정렬
+>>> Post.objects.order_by('created_date')
+
+# 내림차순 정렬 (-)
+>>> Post.objects.order_by('-craeted_date')
+```
+
+
+
 ### 쿼리셋 연결하기
 
+쿼리셋들을 함께 연결(chaining)
 
+```bash
+>>> Post.objects.filter(published_Date__lte=timezone.now()).order_by('published_date')
+```
+
+
+
+쉘 종료
+
+```bash
+>>> exit()
+```
 
 
 
 # 템플릿 동적 데이터
 
+Post 모델은 models.py 파일에, post_list 모델은 views.py 파일에 있음 (각각 다른 장소에 나눠져있음)
+
+데이터베이스 안에 저장되어 있는 모델(콘텐츠)을 가져와 템플릿에 넣어 보여주기
+
+
+
+뷰(view)
+
+- 모델과 템플릿을 연결하는 역할
+- post_list를 뷰에서 보여주고 이를 템플릿에 전달하기 위해 모델을 가져와야 함
+- 일반적으로 뷰가 템플릿에서 모델을 선택하도록 만들어야 함
+
+
+
+blog
+
+- views.py
+
+  ```python
+  from django.shortcuts import render
+  # models.py 파일에 정의된 모델 가져옴
+  # .은 현재 디렉토리 또는 애플리케이션을 의미
+  from .models import Post
+  
+  # post_list 뷰 내용
+  def post_list(request):
+      return render(request, 'blog/post_list.html', {})
+  ```
+
+- models.py
+
+
+
+## 쿼리셋(QuerySet)
+
+Post 모델에서 글을 가져오기 위해 쿼리셋(QuerySet)이 필요
+
+
+
+blog
+
+- views.py
+
+  ```python
+  # 게시일 published_date 기준으로 정렬
+  Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+  ```
+
+  ```python
+  from django.shortcuts import render
+  # timezone 모듈을 불러오기 위해 추가
+  from django.utils import timezone
+  from .models import Post
+  
+  def post_list(request):
+      # posts 변수를 만듦
+      # 이 변수는 쿼리셋의 이름
+      posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+      # posts 쿼리셋을 템플릿에 보냄
+      return render(request, 'blog/post_list.html', {'posts': posts})
+  ```
+
+  - render 함수
+    - `request`: 매개변수(사용자가 요청하는 모든 것)
+    - `'blog/post_list.html'`: 템플릿
+    - `{'posts': posts}`: {} 안에 템플릿을 사용하기 위한 매개변수를 추가
+
+
+
 # Django 템플릿
 
+장고는 데이터를 보여주기 위해 내장된 템플릿 태그(template tags) 기능을 제공
+
+
+
+## 템플릿 태그는 무엇인가요?
+
+브라우저는 파이썬 코드를 이해할 수 없기 때문에 HTML에 파이썬 코드를 바로 넣을 수 없음
+
+
+
+템플릿 태그
+
+- 파이썬을 HTML로 바꿔줌
+- 동적인 웹 사이트를 만들 수 있게 함
+
+
+
+## post 목록 템플릿 보여주기
+
+blog
+
+- templates
+
+  - blog
+
+    - post_list.html (템플릿)
+
+      ```html
+      <!-- 템플릿에 넘겨진 posts 변수를 받아 HTML에 나타나도록 함 -->
+      {{ posts }}
+      ```
+
+      - 변수 이름 안에 중괄호를 넣어 표시
+      - 장고 템플릿 안에 있는 값을 출력
+
+      ```html
+      <!-- for loop를 이용해 목록을 보여줌 -->
+      {% for post in posts %}
+      	{{ post }}
+      {% endfor %}
+      ```
+
+      ```html
+      <!-- HTML과 템플릿 태그를 섞어 사용 -->
+      <div>
+          <h1><a href="/">Django Girls Blog</a></h1>
+      </div>
+      
+      <!-- 목록의 모든 객체를 반복함 -->
+      {% for post in posts %}
+      	<div>
+              <!-- Post 모델에서 정의한 각 필드의 데이터에 접근하기 위한 표기법 -->
+              <p>published: {{ post.published_date }}</p>
+              <h1><a href="">{{ post.title }}</a></h1>
+              <!-- |linebreaksbr: 글 텍스트에서 행이 바뀌면 문단으로 변환 -->
+              <p>{{ post.text|linebreaksbr }}</p>
+      	</div>
+      {% endfor %}
+      ```
+
+
+
+[DjangoGirls/ Django 템플릿](https://tutorial.djangogirls.org/ko/django_templates/)
+
+## 한 가지 더
+
+
+
+[DjangoGirls/ CSS - 예쁘게 만들기](https://tutorial.djangogirls.org/ko/css/)
+
 # CSS - 예쁘게 만들기
+
+
+
+
 
 # 템플릿 확장하기
 
