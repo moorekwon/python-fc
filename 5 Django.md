@@ -316,7 +316,8 @@ blog
     - `class Post(models.Model)`
       - `clsss`: 특별한 키워드. 객체를 정의한다는 것을 알려줌
       - `Post`: 모델 이름. 클래스 이름의 첫 글자는 대문자
-  - `models`: Post가 장고 모델임을 의미. 장고는 Post가 데이터베이스에 저장되어야 한다고 알게 됨
+      - `models`: Post가 장고 모델임을 의미. 장고는 Post가 데이터베이스에 저장되어야 한다고 알게 됨
+    
     - `def publish(self)`
       - `def`: 함수/메소드
       - `publish`: 메소드 이름
