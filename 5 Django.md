@@ -124,41 +124,43 @@ manage.py
 
 - 사이트 관리를 도와주는 역할
 - 다른 설치 작업 없이 컴퓨터에서 웹 서버를 시작할 수 있는 스크립트
-- 프로젝트 디렉토리(djangogirls) 안에 있어야 함
+- 프로젝트 디렉토리 안에 있어야 함
 
 
 
 ## 설정 변경
 
-mysite/settings.py
+mysite
 
-- 웹사이트에 정확한 현재 시간 넣기
+- settings.py
 
-  ```python
-  # '위키피디어 타임존 리스트'에서 해당 시간대 복사
-  TIME_ZONE = 'Asia/Seoul'
-  ```
-
-- 정적파일 경로 추가
-
-  - STATIC_URL 항목 바로 아래에 STATIC_ROOT 추가
+  - 웹사이트에 정확한 현재 시간 넣기
 
     ```python
-    STATIC_URL = '/static/'
-    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+    # '위키피디어 타임존 리스트'에서 해당 시간대 복사
+    TIME_ZONE = 'Asia/Seoul'
     ```
 
-- ALLOWED_HOSTS 설정
+  - 정적파일 경로 추가
 
-  - DEBUG가 True이고 ALLOWED_HOSTS가 비어 있으면, 호스트는 `['localhost', '127.0.0.1', '[::1]'`]에 대해 유효
+    - STATIC_URL 항목 바로 아래에 STATIC_ROOT 추가
 
-  - 애플리케이션을 배포할 때 PythonAnywhere의 호스트 이름과 일치하지 않으므로 설정 변경
+      ```python
+      STATIC_URL = '/static/'
+      STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+      ```
 
-    ```python
-    ALLOWED_HOSTS = ['127.0.0.1', '.pythonanywhere.com']
-    ```
+  - ALLOWED_HOSTS 설정
 
-  
+    - DEBUG가 True이고 ALLOWED_HOSTS가 비어 있으면, 호스트는 `['localhost', '127.0.0.1', '[::1]'`]에 대해 유효
+
+    - 애플리케이션을 배포할 때 PythonAnywhere의 호스트 이름과 일치하지 않으므로 설정 변경
+
+      ```python
+      ALLOWED_HOSTS = ['127.0.0.1', '.pythonanywhere.com']
+      ```
+
+
 
 ## 데이터베이스 설정하기
 
@@ -229,11 +231,11 @@ python manage.py runserver
 
 모델을 저장하면 그 내용이 데이터베이스에 저장
 
-데이터베이스 안의 모델은 엑셀 스프레드시트처럼 열(필드)과 행(데이터)으로 구성되어 있음
+데이터베이스 안의 모델은 열(필드)과 행(데이터)으로 구성되어 있음
 
 
 
-SQLite 데이터베이스
+ALLOWED_HOSTS = ['127.0.0.1', '.pythonanywhere.com']SQLite 데이터베이스
 
 - 기본 장고 데이터베이스 어댑터
 
@@ -287,9 +289,6 @@ blog
     from django.utils import timezone
     
     # 모델 정의
-    # class: 특별한 키워드. 객체를 정의한다는 것을 알려줌
-    # Post: 모델 이름. 항상 클래스 이름의 첫 글자는 대문자
-    # models: Post가 장고 모델임을 의미. 장고는 Post가 데이터베이스에 저장되어야 한다고 알게 됨
     class Post(models.Model):
         # 속성 정의
         # 다른 모델에 대한 링크
@@ -303,21 +302,26 @@ blog
         published_date = models.DateTimeField(blank=True, null=True)
         
         # publish 메소드
-        # def: 함수/메소드
-        # publish: 메소드 이름
         def publish(self):
             self.published_date = timezone.now()
             self.save()
             
         # 던더(dunder): 더블-언더스코어의 준말
+        # 메소드: 자주 무언가를 되돌려줌(return)
         # __str__ 메소드를 호출하면 Post 모델의 제목 텍스트(string)를 얻음
         def __str__(self):
             return self.title
     ```
-
+    
+    - `class Post(models.Model)`
+      - `clsss`: 특별한 키워드. 객체를 정의한다는 것을 알려줌
+      - `Post`: 모델 이름. 클래스 이름의 첫 글자는 대문자
+  - `models`: Post가 장고 모델임을 의미. 장고는 Post가 데이터베이스에 저장되어야 한다고 알게 됨
+    - `def publish(self)`
+      - `def`: 함수/메소드
+      - `publish`: 메소드 이름
     - 속성을 정의하기 위해 필드마다 어떤 종류의 데이터 타입을 가지는지 정해야 함
       - 데이터 타입: 텍스트, 숫자, 날짜, 다른 객체 참조 등
-    - 메소드: 자주 무언가를 되돌려줌(return)
 
 
 
@@ -358,7 +362,7 @@ blog
   # Post 모델을 가져옴
   from .models import Post
   
-  # 관리자 페이지에서 만든 보델을 보기 위해 모델 등록
+  # 관리자 페이지에서 만든 모델을 보기 위해 모델 등록
   admin.site.register(Post)
   ```
 
@@ -401,7 +405,6 @@ PythonAnywhere
 
 - 비교적 배포 과정이 간단
 - 방문자가 아주 많지 않은 소규모 애플리케이션을 위한 무료 서비스를 제공
-- 웹
 
 GitHub
 
