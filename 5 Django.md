@@ -1429,22 +1429,198 @@ blog
     - base.html
 
       ```html
-      <a href="{% url 'post_new' %}" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>
+      <div class="page-header">
+      	<!-- post_new 뷰 링크 추가 -->
+          <a href="{% url 'post_new' %}" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>    
+      </div>
       ```
+      
+      - NoReverseMatch 에러
 
 
 
 ## URL
 
+blog
+
+- urls.py
+
+  ```python
+  urlpatterns = [
+      path('', views.post_list, name='post_list'),
+      path('post/<int:pk>/', views.post_detail, name='post_detail'),
+      # 추가
+      path('post/new/', views.post_new, name='post_new')
+  ]
+```
+  
+  - AttributeError 에러
+  - post_new 뷰를 구현해야 함
+
+
+
 ## `post_new` view
+
+blog
+
+- views.py
+
+  ```python
+  from .forms import PostForm
+  ```
+
+  ```python
+  def post_new(request):
+      form = PostForm()
+      return render(request, 'blog/post_edit.html', {'form': form})
+  ```
+
+  - 새 Post 폼을 추가하기 위해 PostForm() 함수를 호출하도록 하여 템플릿에 넘김
+  - 폼을 위한 템플릿을 만들어야 함
+
+
 
 ## 템플릿
 
+blog
+
+- templates
+
+  - blog
+
+    - post_edit.html (파일 생성)
+
+      - 폼이 작동할 수 있게 만듦
+
+      ```html
+      {% extends 'blog/base.html' %}
+      
+      {% block content %}
+      	<h1>New post</h1>
+      	<!-- 폼 보안을 위해 추가 (빼먹으면 Forbidden (403)) -->
+      	<form method="POST" class="post-form">{% csrf_token %}
+              <!-- 폼이 보이도록 함 -->
+              {{ form.as_p }}
+              <button type="submit" class="save btn btn-default">Save</button>
+      	</form>
+      {% endblock %}
+      ```
+
+      - title, text 필드에 아무거나 입력하고 저장하면 글이 사라지고 새 글이 추가되지 않음
+      - view 추가 작업이 필요함
+
+
+
 ## 폼 저장하기
+
+blog
+
+- views.py
+
+  ```python
+  def post_new(request):
+      form = PostForm()
+      return render(request, 'blog/post_edit.html', {'form': form})
+  ```
+
+  - 폼을 제출할 때, 같은 뷰를 불러옴
+
+  - `request.POST`
+
+    - 입력했던 데이터들을 갖고 있음
+
+    - `POST`: 글 데이터를 등록하는(posting) 것을 의미
+    - HTML에서 `<form method="POST">` 속성을 통해 POST로 넘겨진 폼 필드의 값들이 저장됨
+
+
+
+1. 처음 페이지에 접속
+
+   - 새 글을 쓸 수 있께 폼이 비어있어야 함
+
+2. 폼이 입력된 데이터를 view 페이지로 갖고 올 때
+
+   ```python
+   # 새 블로그 글 작성 후 post_detail 페이지로 이동할 수 있도록 함
+   from django.shortcuts import redirect
+   
+   def post_new(request):
+       if request.method == "POST":
+           # 폼에서 받은 데이터를 PostForm으로 넘겨줌
+           form = PostForm(request.POST)
+   
+           # 폼에 들어있는 값들이 올바른지 확인
+           if form.is_valid():
+               # 작성자 정보를 추가한 다음 저장해야 함
+               post = form.save(commit=False)
+               post.author = request.user
+               post.published_date = timezone.now()
+               post.save()
+               # 이동해야할 뷰 post_detail
+               # pk 변수를 사용해 뷰에게 값을 넘겨줌
+               # post는 새로 생성한 블로그 글
+               return redirect('post_detail', pk=post.pk)
+       else:
+           form = PostForm()
+   	return render(request, 'blog/post_edit.html', {'form': form})
+   ```
+
+   - `form.save()`로 폼을 저장
+     - `commit=False`: 넘겨진 데이터를 바로 Post 모델에 저장하지 말라는 의미
+     - `post.save()`: 변경사항을 유지 (새 블로그 글이 만들어짐)
+   - 작성자를 추가
+   - `http://127.0.0.1:8000/post/new` 페이지 접속
+     - title, text를 입력하고 저장하면 새로운 블로그 글이 추가되고 post_detail 페이지가 나타남
+
+
 
 ## 폼 검증하기
 
+블로그 글은 title과 text 필드가 반드시 있어야 함
+
+장고는 모두 기본값으로 설정되어 있다고 생각
+
+- title과 text 없이 폼을 저장하면, 'This field is required.' 뜸
+
+장고는 모든 필드의 값이 올바른지 검증할 수 있음
+
+
+
 ## 폼 수정하기
+
+이미 있던 글을 수정하기
+
+blog
+
+- templates
+
+  - blog
+
+    - post_detail.html
+
+      ```html
+      <!-- <div class="post"> 안에 추가 -->
+      <a class="btn btn-default" href="{% url 'post_edit' pk=post.pk %}"><span class="glyphicon glyphicon-pencil"></span></a>
+      ```
+
+- urls.py
+
+  ```python
+  # 추가
+  path('post/<int:pk>/edit/', views.post_edit, name='post_edit')
+  ```
+
+- views.py
+
+  ```python
+  def post_edit(request, pk):
+      post = get_object_or_404(Post, pk=pk)
+      
+      if request.method == "POST":
+          form = PostForm(request.POST, instance=post)
+  ```
+
+  
 
 ## 보안
 
