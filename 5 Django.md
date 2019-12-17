@@ -1,6 +1,6 @@
-# Django란 무엇인가요
+# Django란
 
-## 장고란 무엇인가요?
+## 장고란
 
 Django(쟁고/장고)
 
@@ -14,7 +14,7 @@ Django(쟁고/장고)
 
 
 
-## 왜 프레임워크가 필요한가요?
+## 프레임워크가 필요한 이유
 
 웹 서버
 
@@ -26,7 +26,7 @@ Django(쟁고/장고)
 
 
 
-## 누군가가 서버에 웹 사이트를 요청하면 어떤 일이 벌어질까요?
+## 누군가가 서버에 웹 사이트를 요청할 경우
 
 웹 서버에 요청이 오면 장고로 전달
 
@@ -50,7 +50,7 @@ view 함수
 
 
 
-# Django 설치하기
+# Django 설치
 
 ## 가상환경(virtual environment)
 
@@ -73,7 +73,7 @@ python3 -m venv myvenv
 
 
 
-## 가상환경 사용하기
+## 가상환경 사용
 
 ```bash
 # 가상환경 실행
@@ -84,7 +84,7 @@ source myvenv/bin/activate
 
 
 
-## 장고 설치하기
+## 장고 설치
 
 ```bash
 # pip가 최신 버전인지 확인
@@ -162,7 +162,7 @@ mysite
 
 
 
-## 데이터베이스 설정하기
+## 데이터베이스 설정
 
 데이터베이스
 
@@ -188,10 +188,15 @@ sqlite3
 
 
 
+블로그에 데이터베이스를 생성
+
 ```bash
-# 블로그에 데이터베이스를 생성
 python manage.py migrate
-# 웹 서버 시작
+```
+
+웹 서버 시장
+
+```bash
 python manage.py runserver
 ```
 
@@ -386,7 +391,7 @@ blog
 
 
 
-# 배포하기
+# 배포
 
 웹 사이트 개발의 가장 중요한 부분
 
@@ -414,7 +419,7 @@ GitHub
 
 
 
-## Git 설치하기
+## Git 설치
 
 Git
 
@@ -429,41 +434,9 @@ sudo apt install git
 
 
 
-[DjangoGirls/ 배포하기!](https://tutorial.djangogirls.org/ko/deploy/#git-설치하기)
-
-### Git 저장소 만들기
-
-
-
-### GitHub에 코드 배포하기
-
-
-
-## PythonAnywhere에 블로그 설정하기
-
-### GitHub에서 PythonAnywhere로 코드 가져오기
-
-### PythonAnywhere에서 가상환경(virtualenv) 생성하기
-
-### PythonAnywhere에서 데이터베이스 생성하기
-
-
-
-## web app으로 블로그 배포하기
-
-### 가상환경(virtualenv) 설정하기
-
-### WSGI 파일 설정하기
-
-
-
-## 디버깅 팁
-
-
-
 # Django urls
 
-## URL이란 무엇인가요?
+## URL이란
 
 URL
 
@@ -476,7 +449,7 @@ URL
 
 
 
-## 장고 URL은 어떻게 작동할까요?
+## 장고 URL의 작동
 
 mysite
 
@@ -591,7 +564,7 @@ blog
 
 
 
-# HTML 시작하기
+# HTML 시작
 
 템플릿
 
@@ -600,7 +573,7 @@ blog
 
 
 
-## HTML 이란 무엇일까요?
+## HTML 이란
 
 HTML
 
@@ -645,31 +618,13 @@ blog
 
 
 
-[DjangoGirls/ HTML 시작하기](https://tutorial.djangogirls.org/ko/html/)
-
-### Head & body
-
-
-
-## 맞춤형 템플릿 만들기
-
-
-
-## 하나 더: 배포하기
-
-### GitHub에 코드를 커밋, 푸시
-
-### PythonAnywhere에서 새 코드를 가져와, 웹 앱을 다시 불러옵니다.
-
-
-
 # Django ORM(Querysets)
 
 장고를 데이터베이스에 연결하고 데이터 저장하기
 
 
 
-## 쿼리셋이란 무엇인가요?
+## 쿼리셋이란
 
 전달받은 모델의 객체 목록
 
@@ -690,7 +645,7 @@ python manage.py shell
 
 
 
-### 모든 객체 조회하기
+### 모든 객체 조회
 
 ```bash
 # Post 모델을 blog.models에서 불러옴
@@ -702,7 +657,7 @@ python manage.py shell
 
 
 
-### 객체 생성하기
+### 객체 생성
 
 파이썬으로 새 글 포스팅하기
 
@@ -727,7 +682,7 @@ Post.objects.create(author=me, title='Sample title', text='Test')
 
 
 
-### 필터링하기
+### 필터링
 
 데이터를 필터링
 
@@ -760,7 +715,7 @@ Post.objects.create(author=me, title='Sample title', text='Test')
 
 
 
-### 정렬하기
+### 정렬
 
 쿼리셋은 객체 목록을 정렬할 수 있음
 
@@ -774,7 +729,7 @@ Post.objects.create(author=me, title='Sample title', text='Test')
 
 
 
-### 쿼리셋 연결하기
+### 쿼리셋 연결
 
 쿼리셋들을 함께 연결(chaining)
 
@@ -869,7 +824,7 @@ blog
 
 
 
-## 템플릿 태그는 무엇인가요?
+## 템플릿 태그란
 
 브라우저는 파이썬 코드를 이해할 수 없기 때문에 HTML에 파이썬 코드를 바로 넣을 수 없음
 
@@ -927,15 +882,9 @@ blog
 
 
 
-[DjangoGirls/ Django 템플릿](https://tutorial.djangogirls.org/ko/django_templates/)
-
-## 한 가지 더
-
-
-
 # CSS - 예쁘게 만들기
 
-## CSS는 무엇인가요?
+## CSS란
 
 CSS(Cascading Style Sheets)
 
@@ -943,7 +892,7 @@ CSS(Cascading Style Sheets)
 
 
 
-## 부트스트랩을 사용해봐요!
+## 부트스트랩 사용
 
 (트위터) 개발자들이 만든 오픈 소스 코드
 
@@ -953,7 +902,7 @@ CSS(Cascading Style Sheets)
 
 
 
-### 부트스트랩 설치하기
+### 부트스트랩 설치
 
 blog
 
@@ -982,7 +931,7 @@ blog
 
 
 
-#### 정적 파일은 어디에 넣어야 하나요
+#### 정적 파일을 넣을 곳
 
 장고는 "admin" 앱에서 정적 파일을 어디서 찾아야 하는지 이미 알고 있음
 
@@ -1130,7 +1079,7 @@ blog
       
 
 
-# 템플릿 확장하기
+# 템플릿 확장
 
 템플릿 확장(template extending)
 
@@ -1140,7 +1089,7 @@ blog
 
 
 
-## 기본 템플릿 생성하기
+## 기본 템플릿 생성
 
 blog
 
@@ -1210,7 +1159,7 @@ blog
 
 
 
-# 애플리케이션 확장하기
+# 애플리케이션 확장
 
 블로그 게시글이 각 페이지마다 보이게 만들기
 
@@ -1300,7 +1249,7 @@ blog
 
 
 
-## Post 상세 페이지 내 뷰 추가하기
+## Post 상세 페이지 내 뷰 추가
 
 뷰에 매개변수 pk를 추가
 
@@ -1372,12 +1321,6 @@ blog
 
 
 
-[DjangoGirls/ 애플리케이션 확장하기](https://tutorial.djangogirls.org/ko/extend_your_application/)
-
-## 한 가지만 더 합시다. 배포하세요!
-
-
-
 # Django 폼
 
 블로그 글을 추가하거나 수정하는 기능 추가하기
@@ -1416,8 +1359,6 @@ blog
 
 
 
-[DjangoGirls/ Django 폼](https://tutorial.djangogirls.org/ko/django_forms/)
-
 ## 폼과 페이지 링크
 
 blog
@@ -1452,10 +1393,10 @@ blog
       # 추가
       path('post/new/', views.post_new, name='post_new')
   ]
-```
+  ```
   
-  - AttributeError 에러
-  - post_new 뷰를 구현해야 함
+  - AttrubuteError 에러
+  - `post_new` 뷰를 구현해야 함
 
 
 
@@ -1472,6 +1413,7 @@ blog
   ```python
   def post_new(request):
       form = PostForm()
+      
       return render(request, 'blog/post_edit.html', {'form': form})
   ```
 
@@ -1511,7 +1453,7 @@ blog
 
 
 
-## 폼 저장하기
+## 폼 저장
 
 blog
 
@@ -1574,7 +1516,7 @@ blog
 
 
 
-## 폼 검증하기
+## 폼 검증
 
 블로그 글은 title과 text 필드가 반드시 있어야 함
 
@@ -1586,7 +1528,7 @@ blog
 
 
 
-## 폼 수정하기
+## 폼 수정
 
 이미 있던 글을 수정하기
 
@@ -1599,8 +1541,21 @@ blog
     - post_detail.html
 
       ```html
-      <!-- <div class="post"> 안에 추가 -->
-      <a class="btn btn-default" href="{% url 'post_edit' pk=post.pk %}"><span class="glyphicon glyphicon-pencil"></span></a>
+      {% extends 'blog/base.html' %}
+      
+      {% block content %}
+          <div class="post">
+              {% if post.published_date %}
+                  <div class="date">
+                      {{ post.published_date }}
+                  </div>
+              {% endif %}
+              <!-- 추가 -->
+              <a class="btn btn-default" href="{% url 'post_edit' pk=post.pk %}"><span class="glyphicon glyphicon-pencil"></span></a>
+              <h1>{{ post.title }}</h1>
+              <p>{{ post.text|linebreaksbr }}</p>
+          </div>
+      {% endblock %}
       ```
 
 - urls.py
@@ -1613,15 +1568,66 @@ blog
 - views.py
 
   ```python
+  # url로부터 추가로 pk 매개변수를 받아서 처리
   def post_edit(request, pk):
+      # 수정하고자 하는 글의 Post 모델 인스턴스(instance)로 가져옴
+      # pk로 원하는 글을 찾음
       post = get_object_or_404(Post, pk=pk)
       
-      if request.method == "POST":
-          form = PostForm(request.POST, instance=post)
+    if request.method == "POST":
+          # 가져온 데이터를 폼을 만들 때(폼에 이전에 입력했던 데이터야 있어야 하므로)와 폼을 저장할 때 사용
+          # form = PostForm(request.POST, instance=post)
+          # 코드 수정
+          form = PostForm(instance=post)
+          
+          if form.is_valid():
+              post = form.save(commit=False)
+              post.author = request.user
+              post.published_date = timezone.now()
+              post.save()
+              return redirect('post_detail', pk=post.pk)
+          else:
+              form = PostForm(instance=post)
+          return render(request, 'blog/post_edit.html', {'form': form})
   ```
-
   
+  - 수정 버튼을 누르면 쓴 블로그 글이 들어가 있는 폼을 볼 수 있음
+
+
 
 ## 보안
 
-## 한 가지만 더: 배포하세요!
+웹사이트를 방문하는 누구든지 글을 쓸 수 있는 상태
+
+나에게만 보이고 다른 사람에게는 보이지 않는 버튼 만들기
+
+
+
+blog
+
+- templates
+
+  - blog
+
+    - base.html
+
+      ```html
+      <!-- 태그 추가하여 관리자로 로그인한 유저들만 링크가 보일 수 있게 함 -->
+      {% if user.is_authenticated %}
+          <a href="{% url 'post_new' %}" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>
+      {% endif %}
+      ```
+
+      - `{% if %}`: 브라우저에 페이지를 요청하는 사용자가 로그인 하는 경우 링크가 발생
+
+    - post_detail.html
+
+      ```html
+      <!-- 태그 추가하여 다른 사람들이 게시글을 수정하지 못하게 함 -->
+      {% if user.is_authenticated %}
+      	<a class="btn btn-default" href="{% url 'post_edit' pk=post.pk %}"><span class="glyphicon glyphicon-pencil"></span></a>
+      {% endif %}
+      ```
+
+      - 로그인했기 때문에, 페이지 새로고침을 해도 아무것도 표시되지 않음
+      - 링크와 아이콘 보이지 않음
