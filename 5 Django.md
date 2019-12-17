@@ -957,6 +957,29 @@ mysite
 
 
 
+1. HTML 파일에 있는 각 요소들에 스타일을 정의
+
+2. 요소를 식별
+
+   - 요소 이름을 사용
+
+     - HTML 섹션에서 태그로 기억할 수 있음
+
+     - a, h1, body 등
+
+   - 속성을 이용
+
+     - 요소에 직접 이름을 부여
+
+     - class(요소 그룹을 정의), id(특정 요소를 가리킴) 등
+
+   ```html
+   <!-- a(태그 이름), external_link(class), link_to_wiki_page(id)로 요소를 식별 -->
+   <a href="https://en.wikipedia.org/wiki/Django" class="external_link", id="link_to_wiki_page">
+   ```
+
+
+
 blog
 
 - static
@@ -1014,22 +1037,7 @@ blog
       }
       ```
       
-      - HTML 파일에 있는 각 요소들에 스타일을 정의
-      
-      - 요소를 식별
-      
-        - 요소 이름을 사용
-          - HTML 섹션에서 태그로 기억할 수 있음
-          - a, h1, body 등
-        - 속성을 이용
-          - 요소에 직접 이름을 부여
-          - class(요소 그룹을 정의), id(특정 요소를 가리킴) 등
-      
-        ```html
-        <!-- a(태그 이름), external_link(class), link_to_wiki_page(id)로 요소를 식별 -->
-        <a href="https://en.wikipedia.org/wiki/Django" class="external_link", id="link_to_wiki_page">
-        ```
-
+  
 - templates
 
   - blog
@@ -1049,7 +1057,9 @@ blog
               <!-- (파일 코드가 부트스트랩 파일의 코드를 무시하지 않도록) 부트스트랩 CSS파일 링크 다음에 추가 -->
               <link rel="stylesheet" href="{% static 'css/blog.css' %}">
           </head>
-          
+      ```
+      
+      ```html
           <body>
               <!-- 클래스명 선언 -->
               <div class="page-header">
@@ -1075,8 +1085,8 @@ blog
           </body>
       </html>
       ```
-      
-      
+
+
 
 
 # 템플릿 확장
