@@ -277,6 +277,7 @@ first_name = models.Charfield(max_length=30)
 - many-to-one 관계를 정의
 - 모델의 클래스 속성으로 정의
 - 관계를 정의할 모델 클래스를 인수로 가져야 함
+- 자기 자신이나 아직 선언되지 않은 모델에 대해서도 관계를 가질 수 있음
 
 
 
@@ -372,6 +373,8 @@ class Membership(models.Model):
   - 자기 자신에게 many-to-many 관계를 갖고 중간 모델을 직접 선언하는 경우
     - `ManyToMany` 필드의 `symmetrical` 옵션을 `False`로 설정해 주어야 함
 
+
+
 ```shell
 # ManyToManyField에서 중간 모델(Membership)을 사용
 # 중간 모델 인스턴스 생성
@@ -411,47 +414,438 @@ class Membership(models.Model):
 
 
 
+```shell
+# 중간 모델을 직접 지정한 경우, 중간 모델을 직접 생성해야 함
+>>> Membership.objects.create(person=ringo, group=beatles, date_joined=date(1968, 9, 4), invite_reason="You've been gone for a month and we miss you.")
+>>> beatles.members.all()
+<QuerySet [<Person: Ringo Starr>, <Person: Paul McCartney>, <Person: Ringo Starr>]>
+>>> beatles.members.remove(ringo)
+
+# clear() 함수는 사용 가능
+>>> beatles.members.clear()
+>>> Membership.objects.all()
+<QuerySet []>
+
+# 쿼리시에는 일반적인 many-to-many 관계와 동일하게 사용 가능
+>>> Group.objects.filter(members__name__startswith='Paul')
+<QuerySet [<Group: The Beatles>]>
+
+# 중간 모델을 사용하고 있기 때문에 가능
+# 비틀즈 멤버 중 1961년 1월 1일 이후에 합류한 멤버 찾기
+>>> Person.objects.filter(group__name='The Beatles', membership__date_joined__gt=date(1961, 1, 1))
+
+# Membership 모델에 직접 쿼리
+>>> ringos_membership = Membership.objects.get(group=beeatles, person=ringo)
+>>> ringos_membership.date_joined
+datetime.date(1962, 8, 16)
+>>> ringos_membership.invite_reason
+'Needed a new drummer.'
+
+# Person 객체로부터 many-to-many 역참조를 이용
+>>> ringos_membership = ringo.membership_set.get(group=beatles)
+>>> ringos_membership.date_joined
+datetime.date(1962, 8, 16)
+>>> ringos_membership.invite_reason
+'Needed a new drummer.'
+```
+
+
+
 #### One-to-one relationships
+
+`OneToOneField`
+
+- one-to-one 관계를 정의
+- 모델 클래스의 어트리뷰트로 선언
+- 다른 모델을 확장하여 새로운 모델을 만드는 경우 유용
+- 자기 자신이나 아직 선언되지 않은 모델에 대해서도 관계를 가질 수 있음
+- `parent_link` 옵션을 제공
+- 하나의 모델이 여러 개의 `OneToOneField`를 가질 수 있음
+
+
+
+가게(Places) 정보가 담긴 데이터베이스를 구축한다고 가정
+
+- 데이터베이스에 주소, 전화번호 등의 정보가 들어가야 함
+- 맛집 데이터베이스를 추가적으로 구축할 경우, 새로 Restaurant 모델을 만드는 반복을 피하기 위해 Restaurant 모델에 Place 모델만 `OneToOneField`로 선언
+
+
+
+> `OneToOneField`클래스가 자동적으로 모델의 primary key가 되었던 적이 있습니다. 지금은 더 이상 그렇게 사용하지 않습니다. 물론, 직접 `primary_key=True`를 지정하여 primary key로 만들 수는 있습니다.
+
+
 
 ### Models across files
 
+다른 앱에 선언된 모델과 관계를 가질 수 있음
+
+다른 앱의 모델을 import 해서 관계 필드를 선언
+
+
+
+```python
+from django.db import models
+from geography.models import ZipCode
+
+class Restaurant(models.Model):
+    zip_code = models.ForeignKey(
+    	ZipCode,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+```
+
+
+
 ### Field name restrictions
 
+모델 필드명의 제약
+
+1. 파이썬 예약어는 필드명으로 사용할 수 없음
+
+   ```python
+   class Example(models.Model):
+       # 'pass'는 예약어
+       pass = models.IntegerField()
+   ```
+
+2. 필드 이름에 밑줄 두 개를 연속으로 사용할 수 없음
+
+   ```python
+   class Example(models.Model):
+       # 밑줄 두 개를 연속으로 사용하면, 장고에서 특별한 문법으로 사용됨
+       foo__bar = models.IntegerField()
+   ```
+
+   - 데이터베이스에 컬럼명을 밑줄 두 개 넣어야 하는 경우, `db_column` 옵션을 사용하여 제약을 우회
+   - SQL 예약어의 경우, (join, where, select)에는 필드 이름으로 허용됨
+     - 장고에 쿼리문을 만들 때, 모든 컬럼명과 테이블명은 (실제 데이터베이스 엔진에 맞게 알아서) 이스케이프 처리함
+
+
+
 ### Custom field types
+
+필드를 직접 만들어 사용할 수 있음
+
+- 장고에서 제공하는 필드 타입 중 적절한 타입이 없는 경우
+- 특정 데이터베이스에서만 제공하는 특별한 타입을 사용하고 싶은 경우
 
 
 
 ## Meta options
 
+모델 클래스 내부에 Meta 라는 이름의 클래스를 선언
+
+- 모델에 메타데이터를 추가
+
+
+
+```python
+from django.db import models
+
+class Ox(models.Model):
+    horn_length = models.IntegerField()
+    
+    # 모델 메타데이터
+    class Meta:
+        # 정렬 옵션
+        ordering = ["horn_length"]
+        # 복수 이름
+        verbose_name_plural = "oxen"
+```
+
+- 모델 메타데이터
+  - (필드의 옵션이 아니라) 모델 단위의 옵션
+  - 옵션을 지정할 수 있음
+    - ordering: 정렬 옵션
+    - db_table: 데이터베이스 테이블 이름
+    - verbose_name: 읽기 좋은 이름
+    - verbose_name_plural: 복수 이름
+  - 모델 클래스에 반드시 선언해야 하는 것은 아님
+  - 모든 옵션을 설정해야 하는 것은 아님
+
 
 
 ## Model attributes
+
+### objects
+
+`Manager` 객체
+
+- 모델 클래스에서 가장 중요한 속성
+- 모델 클래스를 기반으로 데이터베이스에 대한 쿼리 인터페이스를 제공
+- 데이터베이스 레코드를 모델 객체로 인스턴스화 함
+- 할당하지 않으면 장고는 기본 Manager를 클래스 속성으로 자동 할당하는데, 이 때 속성의 이름이 <u>objects</u>
 
 
 
 ## Model methods
 
+모델 클래스에 메소드를 구현해주어 모델 객체(row) 단위의 기능을 구현
+
+테이블 단위의 기능은 Manager에 구현
+
+```python
+from django.db import models
+
+class Person(models.Model):
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    birth_date = models.DateField()
+    
+    def baby_boomer_status(self):
+        "Returns the person's baby-boomer status."
+        import datetime
+        if self.birth_date < datetime.date(1945, 8, 1):
+            return "Pre-boomer"
+        elif self.birth_date < datetime.date(1965, 1, 1):
+            return "Baby boomer"
+        else:
+            return "Post_boomer"
+        
+    def _get_full_name(self):
+        "Returns the person's full name."
+        return '%s %s' % (self.first_name, self.last_name)
+    # property는 메소드를 속성처럼 접근할 수 있도록 해줌
+    full_name = property(_get_full_name)
+```
+
+
+
+모델 클래스에 자동적으로 주어지는 메소드
+
+- `__str__()` (Python 3)
+  - 모델 객체가 문자열로 표현되어야 하는 경우에 호출
+  - admin이나 console에서 많이 쓰임
+  - 기본 구현은 아무 도움이 되지 않는 문자열을 리턴
+  - 모든 모델에 대해 오버라이드 해서 알맞게 구현해주는게 좋음
+- `get_absolute_url()`
+  - 장고가 해당 모델 객체의 URL을 계산할 수 있도록 함
+  - 장고는 모델 객체를 URL로 표현하는 경우에 사용
+  - admin 사이트에서도 사용
+  - 모델 객체가 유일한 URL을 가지는 경우 구현해주어야 함
+
+
+
 ### Overriding predefined model methods
 
+커스터마이징 할 데이터베이스 동작을 캡슐화하는 모델 메소드 집합
+
+`save()`나 `delete()`의 작업방식을 바꾸는 경우가 많음
+
+동작을 바꾸기 위해 오버라이드 할 수 있음 
+
+
+
+```python
+from django.db import models
+
+class Blog(models.Model):
+    name = models.CharField(max_length=100)
+    tagline = models.TextField()
+    
+    # 내장된 메소드를 재정의
+    # 객체를 저장할 때마다 어떤 작업을 수행하기를 원할 때 사용
+    def save(self, *args, **kwargs):
+        do_something()
+        super(Blog, self).save(*args, **kwargs)
+        do_something_else()
+```
+
+```python
+from django.db import models
+
+class Blog(models.Model):
+    name = models.CharField(max_length=100)
+    tagline = models.TextField()
+    
+    # 저장을 막을 수도 있음
+    def save(self, *args, **kwargs):
+        if self.name = "Yoko Ono's blog":
+            return
+        else:
+            # 슈퍼 클래스 메소드를 호출하는 것을 기억해야 함
+            super(Blog, self).save(*args, **kwargs)
+```
+
+- `super(Blog, self).save(* args, **kwargs)`
+  - 객체가 데이터베이스에 저장되도록 함
+  - 슈퍼 클래스 메소드를 호출하는 것을 잊어버리면 기본 동작이 실행되지 않고, 데이터베이스에 저장하지 않음
+  - `*args`, `**kwargs` 변수
+    - 모델 메소드에 전달할 수 있는 인수를 전달
+    - 장고는 수시로 내장 모델 메소드의 기능을 확장하여 새로운 인수를 추가함
+    - 코드가 추가될 때 해당 인수를 자동으로 지원한다는 보장을 받음
+- 오버라이드 된 모델 메소드는 `bulk operations`에서는 동작하지 않음
+  - 쿼리셋을 사용하여 대량으로 객체를 삭체할 때 delete() 메소드가 반드시 호출되지 않을 수 있음
+    - `pre_delete`와 `post_delete` 시그널을 사용하여 사용자 정의 삭제 논리를 실행
+  - `bulk operaitons`에서는 `save()` 메소드, `pre_save` 및 `post_save` 시그널이 호출되지 않음
+    - 객체를 대량으로 만들거나 업데이트 할 때 해결 방법이 없음
+
+
+
 ### Executing custom SQL
+
+모델 메소드 및 모듈 수준 메소드에 사용자 지정 SQL 문을 작성
 
 
 
 ## Model inheritance
 
+장고의 모델 상속
+
+- 파이썬의 클래스 상속과 작동하는 방식이 거의 동일
+- 반드시 따라야하는 기본 사항
+  - 기본 클래스가 `django.db.models.Model`을 상속받아야 함
+  - 부모 모델이 자체 데이터베이스 테이블을 가지는 모델이 될지, 부모가 자식 모델에게 전달할 정보만 갖고 있는지 여부만 결정하면 됨
+- 상속을 제공하는 스타일
+  1. 추상 기본 클래스(Abstract base classes)
+     - 부모 클래스를 사용하여 각 하위 모델에 대해 일일이 입력하지 않으려는 정보를 제공하는 경우
+     - 클래스를 따로 분리하여 사용하지 않음
+     - 가장 일반적
+  2. 다중 테이블 상속(Multi table inheritance)
+     - 기존 모델을 하위 클래스화 하고, 각 모델이 자체 데이터베이스 테이블을 가지기를 원하는 경우
+  3. `Proxy` 모델
+     - 모델 필드를 변경하지 않고 모델의 파이썬 수준 동작만 수정하려는 경우
+
+
+
 ### Abstract base classes
+
+추상 기본 클래스
+
+- 몇 가지 공통된 정보를 여러 다른 모델에 넣으려 할 때 유용
+- 기본 클래스를 작성하고 `Meta` class에 `abstract = True`를 넣음
+- 데이터베이스 테이블을 만드는 데 사용되지 않는 대신, 다른 모델의 기본 클래스로 사용될 때 해당 필드는 자식 클래스의 필드에 추가됨
+- 자식의 이름과 같은 이름(상속받은 클래스의 이름과 같은 이름의 필드)을 가진 추상 기본 클래스의 필드를 가질 수 없음
+- 파이썬 레벨에서 공통 정보를 제외시키는 방법을 제공하면서, 데이터베이스 레벨에서 하위 모델 당 하나의 데이터베이스 테이블만 생성
+
+
+
+```python
+from django.db import models
+
+# abstract base class
+class CommonInfo(models.Model):
+    name = models.CharField(max_length=100)
+    age = models.PositiveIntegerField()
+    
+    class Meta:
+        abstract = True
+        
+class Student(CommonInfo):
+    hmoe_group = models.CharField(max_length=5)
+```
+
+- `Student` 모델에는 `name`, `age`, `home_group` 세 가지 필드가 있음
+- `CommonInfo` 모델은 일반 `Django` 모델로 사용할 수 없음
+  - 데이터베이스 테이블을 생성하지 않음
+  - `Manager`를 가지지 않음
+  - 직접 인스턴스화 하거나 저장할 수 없음
+
+
 
 #### Meta inheritance
 
+추상 기본 클래스가 생성되면 장고는 기본 클래스에서 선언한 `Meta` 내부 클래스를 속성으로 사용할 수 있게 함
+
+자식 클래스가 자신의 `Meta` 클래스를 선언하지 않으면 부모 클래스의 메타를 상속받음
+
+
+
+```python
+from django.db import models
+
+class CommonInfo(models.Model):
+    class Meta:
+        abstract = True
+        ordering = ['name']
+  
+# 자식이 부모의 Meta 클래스를 확장하면 해당 클래스를 서브 클래스로 사용할 수 있음
+class Student(CommonInfo):
+    class Meta(CommonInfo.Meta):
+        db_table = 'student_info'
+```
+
+
+
+장고는 추상 기본 클래스의 `Meta` 클래스를 조정함
+
+`Meta` 속성을 적용하기 전에 `abstract` 속성 값을 `False`로 설정함 (추상 기본 클래스의 자식은 자동으로 추상 클래스가 되지 않음)
+
+매번 `abstract = True`를 명시적으로 설정하면, 다른 추상 기본 클래스에서 상속받은 추상 기본 클래스를 만들 수 있음
+
+
+
 #### Be careful with related_name and related_query_name
 
+ForeignKey 또는 ManyToManyField에서 related_name 또는 related_query_name을 사용하는 경우
+
+- 필드의 고유한 역 이름(reverse name)과 쿼리 이름(query name)을 항상 지정해야 함
+- ForeignKey, ManyToManyField 필드를 가진 추상 기본 클래스를 상속받은 경우, 매번 해당 속성(related_name 또는 related_query_name)에 대해 정확히 동일한 값이 사용됨
+- 이 문제를 해결하려면, 추상 기본 클래스에서 값의 일부에 '%(app_label)s' 및 '%(class)s'를 포함
+  - '%(class)s': 필드가 사용되는 하위 클래스의 lower-cased 이름으로 대체
+  - '%(app_label)s': 하위 클래스가 포함된 애플리케이션 이름의 lower-cased 이름으로 대체
+
+
+
+```python
+# common/models.py
+from django.db import models
+
+class Base(models.Model):
+    m2m = models.ManyToManyField(
+    	OtherModel,
+        related_name="%(app_label)s_%(class)s_related",
+        related_query_name="%(app_label)s_%(class)s",
+    )
+    
+    class Meta:
+        abstract = True
+        
+class ChildA(Base):
+    pass
+
+class ChildB(Base):
+    pass
+```
+
+- common.ChildA.m2m 필드
+  - reverse name은 'common_childa_related'
+    - related_name 속성을 지정하지 않으면 'childa_set'
+  - reverse query name은 'common_childas'
+- common.ChildB.m2m 필드
+  - reverse name은 'common_childb_related'
+    - related_name 속성을 지정하지 않으면 'childb_set'
+  - reverse query name은 'common_childbs'
+
+```python
+# rare/models.py
+from common.models import Base
+
+class ChildB(Base):
+    pass
+```
+
+- rare.ChildB.m2m 필드
+  - reverse name은 'rare_childb_related'
+  - reverse query name은 'rare_childbs'
+
+
+
 ### Multi-table inheritance
+
+
+
+
 
 #### Meta and multi-table inheritance
 
 #### Inheritance and reverse relations
 
 #### Specifying the parent link field
+
+
 
 ### Proxy models
 
@@ -462,6 +856,8 @@ class Membership(models.Model):
 #### Proxy model managers
 
 #### Differences between proxy inheritance and unmanaged models
+
+
 
 ### Multiple inheritance
 
