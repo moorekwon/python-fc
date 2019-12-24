@@ -719,6 +719,7 @@ class Blog(models.Model):
 - 데이터베이스 테이블을 만드는 데 사용되지 않는 대신, 다른 모델의 기본 클래스로 사용될 때 해당 필드는 자식 클래스의 필드에 추가됨
 - 자식의 이름과 같은 이름(상속받은 클래스의 이름과 같은 이름의 필드)을 가진 추상 기본 클래스의 필드를 가질 수 없음
 - 파이썬 레벨에서 공통 정보를 제외시키는 방법을 제공하면서, 데이터베이스 레벨에서 하위 모델 당 하나의 데이터베이스 테이블만 생성
+- 기본 클래스가 자체적으로 존재하지 않음
 
 
 
@@ -835,33 +836,334 @@ class ChildB(Base):
 
 ### Multi-table inheritance
 
+계층 구조의 각 모델이 모두 각각 자신을 나타내는 모델인 경우
 
+각 모델
+
+- 자체 데이터베이스 테이블에 해당
+
+- 개별적으로 쿼리하고 생성할 수 있음
+
+
+
+```python
+# 상속 관계는 자동으로 생성된 OneToOneFIeld를 통해 자식 모델과 부모 간 링크를 만듦
+from django.db import models
+
+class Place(models.Model):
+    name = models.CharField(max_length=50)
+    address = models.CharField(max_length=80)
+    
+class Restaurant(Place):
+    serves_hot_dogs = models.BooleanField(default=False)
+    serves_pizza = models.BooleanField(default=False)
+```
+
+```shell
+# Place의 모든 필드는 Restaurant에서 사용할 수 있지만, 데이터는 다른 데이터베이스 테이블에 있음
+>>> Place.objects.filter(name="Bob's Cafe")
+>>> Restaurant.objects.filter(name="Bob's Cafe")
+```
+
+
+
+```shell
+# Restaurant 이면서 Place가 있는 경우, 모델 이름의 소문자 버전을 사용하여 Place 객체에서 Restaurant 객체를 가져올 수 있음
+>>> p = Place.objects.get(id=12)
+>>> p.restaurant
+# <Restaurant: ...>
+```
+
+- p가 Restaurant이 아닌 경우(Place 객체로 직접 작성됐거나 다른 클래스의 부모인 경우), p.restaurant을 참조하면 Restaurant.DoesNotExist 예외 발생
+
+
+
+```python
+# Restaurant에 자동으로 생성된 OneToOneField
+place_ptr = models.OneToOneField(
+	Place,
+    on_delete=models.CASCADE,
+    parent_link=True,
+)
+```
+
+- Restaurant에서 parent_link=True를 사용해 자신의 OneToOneField를 선언하여 해당 필드를 재정의 할 수 있음
 
 
 
 #### Meta and multi-table inheritance
 
+자식 모델은 부모의 메타 클래스에 액세스 할 수 없음
+
+- 다중 테이블 상속 상황에서 자식 클래스가 부모의 Meta 클래스에서 상속받는 것은 의미가 없음
+
+- 모든 메타 옵션은 이미 상위 클래스에 적용되었고 다시 적용하면 모순된 행동만 발생함
+
+
+
+자식이 부모로부터 동작을 상속하는 제한된 경우
+
+- 자식이 ordering 특성이나 get_latest_by 특성을 지정하지 않으면 해당 특성을 부모로부터 상속
+
+  ```python
+  class ChildModel(ParentModel):
+      class Meta:
+          ordering = []
+  ```
+
+
+
 #### Inheritance and reverse relations
 
+다중 테이블 상속
+
+- 암시적으로 OneToOneField를 사용하여 부모와 자식을 연결
+- 자식 클래스를 임의의 추상이 아닌 부모 모델에 연결
+- 상위에서 하위로 이동 가능
+- 모델의 각 하위 클래스에 대해 새 데이터베이스 테이블이 만들어짐
+
+
+
+```python
+# Place 클래스에서 ManyToMAnyField를 사용하는 다른 하위 클래스를 만듦
+class Supplier(Place):
+    customers = models.ManyToManyField(Place)
+    
+# 결과 에러
+# Reverse query name for 'Supplier.customers' clashes with reverse query
+# name for 'Supplier.place_ptr'.
+
+# HINT: Add or change a related_name argument to the definition for
+# 'Supplier.customers' or 'Supplier.place_ptr'.
+```
+
+- customers_name 필드에 related_name을 추가
+  - models.ManyToManyField(Place, related_name='provider')에서 발생한 오류 해결
+- related_name 값으로 ForeignKey 및 ManyToManyField 관계에 대한 기본 값을 사용해야 함
+  - 관계 유형들을 부모 모델의 하위 클래스에 배치하는 경우, 해당 필드 각각에 반드시 related_name 속성을 지정해야 함
+
+
+
 #### Specifying the parent link field
+
+부모에게 다시 연결되는 속성의 이름을 제어하려는 경우
+
+- 고유한 OneToOneField를 만들고 parent_link=True로 설정
+
+- 해당 필드가 부모 클래스에 대한 링크임을 나타내줌
 
 
 
 ### Proxy models
 
+모델의 파이썬에서 동작만을 변경하고자 하는 경우
+
+- 기본 관리자를 변경
+
+- 새 메소드를 추가
+
+
+
+프록시 모델 상속
+
+- 원래 모델에 대한 proxy를 만듦
+- 프록시 모델의 인스턴스를 생성, 삭제, 업데이트
+- 원본(비 프록시) 모델을 사용하는 것처럼 모든 데이터가 저장됨
+- 원본을 변경하지 않고 프록시의 기본 모델 순서(ordering)나 기본 관리자(default manager) 등을 변경할 수 있음
+
+
+
+프록시 모델
+
+- 일반 모델처럼 선언됨
+- 장고에게 메타 클래스의 proxy 속성을 True로 설정하여 프록시 모델임을 알려야 함
+
+
+
+```python
+# Person 모델에 메소드를 추가
+from django.db import models
+
+class Person(models.Model):
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=30)
+   
+# MyPerson 클래스는 상위 Person 클래스와 동일한 데이터베이스 테이블에서 작동
+class MyPerson(Person):
+    class Meta:
+        proxy = True
+        
+    def do_something(self):
+        pass
+```
+
+```shell
+# Person의 새로운 인스턴스는 MyPerson을 통해 엑세스 할 수 있음 (그 반대도 가능)
+>>> p = Person.objects.create(first_name="foobar")
+>>> MyPerson.objects.get(first_name="foobar")
+# <MyPerson: foobar>
+```
+
+
+
+```python
+# Person 모델을 항상 ordering 하고 싶지는 않지만, 프록시를 사용할 때 last_name 속성으로 규칙적으로 ordering 하고자 할 경우
+class OrderedPerson(Person):
+    class Meta:
+        ordering = ["last_name"]
+        proxy = True
+```
+
+- 일반적인 Person 쿼리는 ordering 되지 않음
+- OrderedPerson 쿼리는 last_name에 의해 ordering 됨
+
+
+
 #### QuerySets still return the model that was requested
+
+Person 객체를 쿼리 할 때마다 MyPerson 객체를 반환할 수는 없음
+
+Person 객체에 대한 queryset은 해당 유형의 객체를 반환
+
+
+
+> 프록시 객체의 요점은 원래 **Person**을 사용하는 코드는 그것을 사용하고, 사용자 코드는 포함시킨 확장기능을 사용할 수 있다는 것입니다 (다른 코드는 그다지 의존하지 않음). 그것은 **Person**(또는 다른 어떤 것이든)모델을 항상 당신이 만든 모델로 대체하는 방법이 아닙니다.
+
+
 
 #### Base class restrictions
 
+프록시 모델
+
+- 정확히 하나의 비 추상적 모델 클래스를 상속해야 함
+- 다른 데이터베이스 테이블의 행 사이에 연결을 제공하지 않음
+  - 여러 개의 비 추상적 모델을 상속받을 수 없음
+- 모델 필드가 정의되지 않은 임의의 수의 추상 모델 클래스를 상속받을 수 있음
+- 공통의 비 추상 부모 클래스를 공유하는 임의의 수의 프록시 모델을 상속받을 수 있음
+
+
+
 #### Proxy model managers
 
+프록시 모델에 모델 관리자를 지정하지 않으면 모델 부모로부터 관리자를 상속받음
+
+- 프록시 모델에서 관리자를 정의하면 그것이 기본값이 됨
+
+- 부모 클래스에 정의된 관리자는 계속 사용할 수 있음
+
+
+
+```python
+# Person 모델을 쿼리할 때 사용되는 기본 관리자를 변경
+from django.db import models
+
+class NewManager(models.Manager):
+    pass
+
+class MyPerson(Person):
+    objects = NewManager()
+    
+    class Meta:
+        proxy = True
+```
+
+```python
+# 기존 기본값을 바꾸지 않고 프록시에 새 관리자를 추가
+# 새 관리자를 포함하는 기본 클래스를 작성하고 primary base class 다음으로 해당 관리자를 상속받음
+class ExtraManagers(models.Model):
+    secondary = NewManager()
+    
+    class Meta:
+        abstract = True
+        
+class MyPerson(Person, ExtraManagers):
+    class Meta:
+        proxy = True
+```
+
+
+
 #### Differences between proxy inheritance and unmanaged models
+
+프록시 모델 상속은 모델의 Meta 클래스에서 관리되는 특성을 사용하여 관리되지 않는 모델(unmanaged model)을 만드는 것처럼 비슷하게 보일 수 있음
+
+
+
+unmanaged models
+
+- Meta.db_table을 설정하면 관리되지 않는 모델을 만들어 기존 모델을 shadows 처리하고 Python 메소드를 추가할 수 있음
+- 변경 작업을 수행할 경우, 반복적으로 구조가 일치하지 않는 오류 발생할 수 있음
+  - 두 복사본을 동기화된 상태로 유지해야 함
+
+
+
+proxy inheritance
+
+- 프록싱 중인 모델과 정확히 동일하게 동작
+- 부모 모델은 필드와 관리자를 직접 상속 (항상 부모 모델과 동기화됨)
+- 일반적인 규칙
+  1. Meta.managed = False
+     - 기존 모델이나 데이터베이스 테이블을 미러링하고 원래 데이터베이스 테이블 열을 모두 원하는 않는 경우
+     - 장고가 제어하지 않는 데이터베이스 뷰와 테이블을 모델링할 때 유용
+  2. Meta.proxy = True
+     - 모델의 파이썬 전용 동작을 변경하려고 하지만 원본과 동일한 필드를 모두 유지하려는 경우
+     - 데이터를 저장할 때 프록시 모델이 원본 모델의 저장소 구조와 정확히 일치하도록 설정됨
 
 
 
 ### Multiple inheritance
 
+장고 모델은 여러 부모 모델로부터 상속받을 수 있음
+
+일반적인 파이썬 이름 해석 규칙(Name resolution rules)이 적용
+
+특정 이름이 나타나는 첫 번째 클래스가 사용됨 (여러 부모가 메타 클래스를 포함)
+
+
+
+"믹스 인(mix-in)" 클래스
+
+- 여러 부모로부터 상속하기에 유용한 경우
+- 믹스 인을 상속받은 모든 클래스에 특정 추가 필드나 메소드를 추가
+
+
+
+```python
+# 다중 상속
+class Article(models.Model):
+    # 명시적인 AutoField를 사용
+    # 공통 id 기본 키 필드가 있는 여러 모델을 상속하는 것이 가능
+    article_id = models.AutoField(primary_key=True)
+    
+class Book(models.Model):
+    book_id = models.AutoField(primary_key=True)
+    
+class BookReview(Book, Article):
+    pass
+```
+
+```python
+# 공통 조상을 사용하여 AutoField를 유지
+class Piece(models.Model):
+    pass
+
+class Article(Piece):
+    # 각 상위 모델에서 공통 조상으로 명시적인 OneToOneField를 사용
+    # 하위에서 상속되는 필드 사이의 충돌을 피함
+    article_piece = models.OneToOneField(Piece, on_delete=models.CASCADE, parent_link=True)
+    
+class Book(Piece):
+    book_piece = models.OneToOneField(Piece, on_delete=models.CASCADE, parent_link=True)
+    
+class BookReview(Book, Article):
+    pass
+```
+
+
+
 ### Field name "hiding" is not permitted
+
+
 
 
 
