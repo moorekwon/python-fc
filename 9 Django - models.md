@@ -1163,8 +1163,66 @@ class BookReview(Book, Article):
 
 ### Field name "hiding" is not permitted
 
+일반적인 Python 클래스 상속
 
+- 자식 클래스가 부모 클래스의 모든 특성을 재정의 할 수 있음
+
+장고 모델 상속
+
+- 일반적으로 허용되지 않음
+  - 비 추상적 모델에서 상속된 모델 필드
+    - 기본 클래스에 author라는 필드가 있는 경우, 해당 기본 클래스에서 상속하는 클래스에서 다른 모델 필드를 만들거나 author라는 속성을 정의할 수 없음
+  - 추상적 모델에서 상속된 모델 필드
+    - 다른 필드나 값으로 재정의 하거나 field_name = None을 설정하여 제거할 수 있음
+
+- 모델 관리자는 추상 기본 클래스에서 상속됨
+  - 상속된 관리자가 참조하는 상속된 필드를 무시하면 버그가 발생할 수 있음
+- 일부 필드는 모델의 추가 속성을 정의
+  - ForeignKey: 필드 이름에 _id가 추가된 추가 속성과 외부 모델의 related_name 및 related_query_name을 정의
+  - 추가 속성을 정의하는 필드가 변경되거나 제거된 경우, 추가 속성을 재정의 할 수 없음
+
+- Field 인스턴스인 속성에만 적용 (파이썬이 인식하는 속성의 이름에만 적용)
+
+  - 데이터베이스 열 이름을 수동으로 지정하는 경우, 다중 테이블 상속에서는 자식 및 조상 모델에 같은 열 이름을 표시할 수 있음
+
+  - 두 개의 서로 다른 데이터베이스 테이블에 같은 이름의 열(column)들을 가짐
+
+    ```python
+    class Ancestor(models.Model):
+        name = models.CharField(max_length=10, db_column='name')
+        
+    class Child(Ancestor):
+        # 모델 클래스의 필드명(name)은 override 불가
+        # DB 필드명(db_column)은 중복 가능
+        # 모델 클래스의 필드명(속성명)은 중복 가능
+        # 조상 테이블과 자식 테이블에 모두 'name' 필드가 있게 됨
+        name2 = models.CharField(max_length=10, db_column='name')
+    ```
+
+- 조상 모델에서 존재하는 모델 필드를 재정의하면 FieldError 발생
+
+
+
+> 상위 모델의 필드를 재정의하면 새 인스턴스의 초기화(**Model.__ init__**에서 초기화 할 필드 지정) 및 직렬화와 같은 영역에서 어려움이 발생합니다. 이것들은 일반적인 파이썬 클래스 상속에서 똑같은 방식으로 처리할 필요가 없는 기능이므로 Django모델 상속과 파이썬 클래스 상속에서의 이러한 차이는 Django에서 제멋대로 바꾼 것이 아닙니다.
 
 
 
 ## Organizing models in a package
+
+manage.py startapp 명령
+
+- `models.py` 파일을 포함하는 애플리케이션(app) 구조를 만듦
+
+- 모델이 여러 개인 경우, models 패키지를 만들어 별도의 파일로 구성하여 사용
+
+  ```python
+  # models 디렉토리에 organic.py, synthetic.py가 있음
+  from .organic import Person
+  from .synthetic import Robot
+  ```
+
+  - `models.py`를 제거하고 myapp/models/ 디렉토리를 만들고 `__init__.py` 파일과 모델을 저장할 파일을 만듦
+    - `__init__.py` 파일에서 모델을 가져옴
+  - .models import *를 사용하지 않고 명시적으로 각 모델을 가져옴
+    - 네임 스페이스가 복잡해지지 않아 코드를 읽기 쉽고 분석 도구를 유용하게 유지
+
