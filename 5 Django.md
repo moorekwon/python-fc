@@ -734,7 +734,7 @@ Post.objects.create(author=me, title='Sample title', text='Test')
 쿼리셋들을 함께 연결(chaining)
 
 ```bash
->>> Post.objects.filter(published_Date__lte=timezone.now()).order_by('published_date')
+>>> Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
 ```
 
 
@@ -996,9 +996,9 @@ blog
       }
 
       .page-header h1, .page-header h1 a, page-header h1 a:visited, .page-header h1 a:active {
-      color: #ffffff;
+      	color: #ffffff;
           font-size: 36pt;
-      text-decoration: none;
+      	text-decoration: none;
       }
 
       .content {
@@ -1053,7 +1053,7 @@ blog
               <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
       		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
               <!-- Google 글꼴에서 Lobster 라는 글꼴을 가져와 제목 폰트를 바꿈 -->
-              <link href="//fonts.googleapis.com/css?family=Lobster&subset=latin-ext" rel="stylesheet" type="text/css">
+              <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lobster&subset=latin-ext" type="text/css">
               <!-- (파일 코드가 부트스트랩 파일의 코드를 무시하지 않도록) 부트스트랩 CSS파일 링크 다음에 추가 -->
               <link rel="stylesheet" href="{% static 'css/blog.css' %}">
           </head>
@@ -1343,7 +1343,7 @@ blog
 
 - 아무런 준비 없이도 양식을 만들 수 있음
 - `ModelForm`을 생성해 자동으로 모델에 결과물을 저장할 수 있음
-  - 폼을 만을어서 Post 모델에 적용
+  - 폼을 만들어서 Post 모델에 적용
   - 폼만의 forms.py 라는 파일을 만듦
 
 
@@ -1360,7 +1360,7 @@ blog
   
   # 장고에 PostForm 폼이 ModelForm이라는 것을 알려줌
   class PostForm(forms.ModelForm):
-      clss Meta:
+      class Meta:
           # 이 폼을 만들기 위해서 어떤 model이 쓰여야 하는지 장고에게 알려줌
           model = Post
           # 이 폼에 필드를 넣어 title과 text를 보여지게 함
@@ -1584,11 +1584,9 @@ blog
       # pk로 원하는 글을 찾음
       post = get_object_or_404(Post, pk=pk)
       
-    if request.method == "POST":
+      if request.method == "POST":
           # 가져온 데이터를 폼을 만들 때(폼에 이전에 입력했던 데이터야 있어야 하므로)와 폼을 저장할 때 사용
-          # form = PostForm(request.POST, instance=post)
-          # 코드 수정
-          form = PostForm(instance=post)
+          form = PostForm(request.POST, instance=post)
           
           if form.is_valid():
               post = form.save(commit=False)
@@ -1596,9 +1594,9 @@ blog
               post.published_date = timezone.now()
               post.save()
               return redirect('post_detail', pk=post.pk)
-          else:
-              form = PostForm(instance=post)
-          return render(request, 'blog/post_edit.html', {'form': form})
+      else:
+          form = PostForm(instance=post)
+      return render(request, 'blog/post_edit.html', {'form': form})
   ```
   
   - 수정 버튼을 누르면 쓴 블로그 글이 들어가 있는 폼을 볼 수 있음
