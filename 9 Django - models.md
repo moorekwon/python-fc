@@ -662,7 +662,7 @@ class Blog(models.Model):
     
     # 저장을 막을 수도 있음
     def save(self, *args, **kwargs):
-        if self.name = "Yoko Ono's blog":
+        if self.name == "Yoko Ono's blog":
             return
         else:
             # 슈퍼 클래스 메소드를 호출하는 것을 기억해야 함
@@ -1176,6 +1176,7 @@ class BookReview(Book, Article):
     - 다른 필드나 값으로 재정의 하거나 field_name = None을 설정하여 제거할 수 있음
 
 - 모델 관리자는 추상 기본 클래스에서 상속됨
+  
   - 상속된 관리자가 참조하는 상속된 필드를 무시하면 버그가 발생할 수 있음
 - 일부 필드는 모델의 추가 속성을 정의
   - ForeignKey: 필드 이름에 _id가 추가된 추가 속성과 외부 모델의 related_name 및 related_query_name을 정의
