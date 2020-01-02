@@ -735,7 +735,7 @@ class CommonInfo(models.Model):
         abstract = True
         
 class Student(CommonInfo):
-    hmoe_group = models.CharField(max_length=5)
+    home_group = models.CharField(max_length=5)
 ```
 
 - `Student` 모델에는 `name`, `age`, `home_group` 세 가지 필드가 있음
