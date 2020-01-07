@@ -448,3 +448,109 @@ where countrycode in (
 )
 ```
 
+```mysql
+# view
+# 가상 테이블 - 실제 데이터는 저장되지 않음
+# 복잡한 쿼리문을 간단하게 만들어주는 효과
+# 수정이 불가능하며 인덱스 설정이 불가
+
+CREATE VIEW code_name AS
+
+select code, name
+from country
+join code_name
+
+select *
+from city
+join code_name
+
+# Index
+# 테이블에서 데이터 검색으로 빠르게 해줄수 있는 기능
+# 장점: 검색속도가 빨라짐
+# 단점: 저장공간을 추가로 차지, CUD 할 때 속도가 느려짐
+
+use employees
+```
+
+```mysql
+# 쿼리가 인덱스를 사용하는지 확인하려면 실행 계획을 확인
+explain
+select *
+from salaries
+where to_date < "1986-01-01";
+
+# 인덱스 생성
+create index fdate
+on salaries (from_date);
+
+# 인덱스 삭제
+drop index fdate
+on salaries;
+
+explain
+select *
+from salaries
+where from_date < "1986-01-01" and to_date < "1986-01-01";
+
+# 두 개의 컬럼을 갖는 인덱스 생성
+create index ftdate
+on salaries (from_date, to_date);
+
+drop index ftdate
+on salaries;
+```
+
+```mysql
+# quiz 3
+use world;
+
+select
+	"population" as "category",
+    sum(sub.KOR) as KOR,
+    sum(sub.USA) as USA
+from(select 
+	if(code="KOR", population, 0) as KOR,
+    if(code="USA", population, 0) as USA,
+    1 as flag
+from country
+) as sub
+group by flag;
+
+select code, population
+from country;
+
+# quiz 6
+select sub.countrycode, sub.name as city_name, sub.population, country.name, sub.language_count, sub.languages
+from (
+	select city.countrycode, city.name, city.population, cl.language_count, cl.languages
+	from(
+		select countrycode, GROUP_CONCAT(language) as languages, count(language) as language_count
+		from countrylanguage
+		group by countrycode
+		having language_count <= 3
+	) as cl
+	JOIN (
+		select countrycode, name, population
+		from city
+		where population > 3000000
+	) as city
+	ON cl.countrycode = city.countrycode
+) as sub
+JOIN country
+on country.code = sub.countrycode
+order by population desc;
+
+select countrycode, GROUP_CONCAT(Language) as languages, count(language) as launguage_count
+from countrylanguage
+group by countrycode
+having launguage_count <= 3;
+
+select *
+from countrylanguage
+where countrycode = "KOR";
+
+select countrycode, name, population
+from city
+where population > 3000000
+```
+
