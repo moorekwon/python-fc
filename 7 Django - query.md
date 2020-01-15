@@ -140,15 +140,102 @@ ManyToMany 필드 업데이트
 
 ## 객체 검색(조회)
 
+QuerySet
 
+- 데이터베이스의 개체 모음
+
+- (데이터베이스에서 객체를 검색하기 위해) 모델 클래스의 Manager를 통하여 구성
+  - 모델의 Manager를 사용하여 QuerySet을 얻음
+  - 각 모델에는 하나 이상의 Manager가 있으며, 기본적으로 개체(object) 라고 함
+- SQL 용어에서 SELECT 문과 같음
+
+필터
+
+- 0개, 1개, 혹은 2개 이상의 필터를 가질 수 있음
+- SQL 용어에서 WHERE 또는 LIMIT과 같은 제한 절
+
+
+
+Manager
+
+- 모델의 주요 QuerySet 소스
+
+- 모델 인스턴스가 아닌 모델 클래스를 통해서만 액세스 할 수 있음
+  - "table-level" 작업과 "record-level" 작업을 분리하기 위해
+
+```shell
+>>> Blog.objects
+# <django.db.models.manager.Manager object at ...>
+>>> b = Blog(name='Foo', tagline='Bar')
+>>> b.objects
+# Traceback:
+#     ...
+# AttributeError: "Manager isn't accessible via Blog instances."
+```
+
+- Blog.objects.all()은 데이터베이스의 모든 Blog 객체가 포함된 QuerySet을 리턴
 
 
 
 ### 모든 객체 검색
 
+모든 객체 얻기
+
+- 테이블에서 객체를 검색하는 가장 간단한 방법
+
+- Manager에서 all() 메소드 사용
+- 데이터베이스에 있는 모든 object의 QuerySet을 리턴
+- 리턴된 QuerySet은 데이터베이스 테이블의 모든 object를 설명
+
+```shell
+>>> all_entries = Entry.objects.all()
+```
+
+
+
 ### 필터를 사용하여 특정 객체 검색
 
+전체 개체 집합의 하위 집합만 선택
+
+- (하위 집합을 만들기 위해) 필터 조건을 추가하여 초기 QuerySet을 세분화
+
+- QuerySet을 구체화하는 일반적인 방법
+
+  1. filter(**kwargs)
+
+     - 주어진 조회 매개변수(**kwargs)와 일치하는 객체를 포함하는 새로운 QuerySet을 리턴
+
+       ```python
+       # 2006년부터 블로그 항목의 QuerySet 가져오기
+       Entry.objects.filter(pub_date__year=2006)
+       
+       # 기본 관리자 클래스 사용
+       Entry.objects.all().filter(pub_date__year=2006)
+       ```
+
+  2. exclude(**kwargs)
+
+     - 주어진 조회 매개변수(**kwargs)와 일치하지 않는 객체를 포함하는 새로운 QuerySet을 리턴
+
+
+
 #### 체인 필터
+
+QuerySet을 구체화한 결과는 QuerySet 자체
+
+- 구체화를 함께 연결할 수 있음
+
+```shell
+>>> Entry.objects.filter(
+	headline__startswith='What'
+).exclude(
+	pub_date__gte=datetime.date.today()
+).filter(
+	pub_date__gte=datetime.date(2005, 1, 30)
+) 
+```
+
+
 
 #### 필터링된 `QuerySet`은 고유하다
 
