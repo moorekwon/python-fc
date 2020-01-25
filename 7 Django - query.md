@@ -1071,13 +1071,23 @@ Q(question__startswith='What')
 
 ## 관련 객체
 
+모델에서 관계를 정의할 때(`ForeignKey`, `OneToOneField`, 또는 `ManyToMAnyField`), 해당 모델의 인스턴스에는 관련 객체에 액세스하기 위한 편리한 API가 있음
 
+- Entry 오브젝트 e:  blog 속성 `e.blog`에 액세스하여 연관된 Blog 오브젝트 얻기
+
+Django는 관계의 "다른" 측면에 대한 API 접근자를 만듦
+
+- Blog 오브젝트 b: entry_set 속성 `b.entry_set.all()`에 액세스하여 연관된 Entry 오브젝트 목록 얻기
 
 
 
 ### 일대다 관계
 
 #### Forward
+
+
+
+
 
 #### "backward" 관계 접근
 
