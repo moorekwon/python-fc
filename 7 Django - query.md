@@ -614,7 +614,7 @@ Django
 )
 ```
 
-- Django는 (상수와 다른 `F()` 객체 둘 다와 함께) `f()` 객체를 사용하여 더하기, 빼기, 곱하기, 나누기, 모듈로 및 거듭 제곱 연산을 지원
+- Django는 (상수와 다른 `F()` 객체 둘 다와 함께) `F()` 객체를 사용하여 더하기, 빼기, 곱하기, 나누기, 모듈로 및 거듭 제곱 연산을 지원
 
 ```shell
 # 핑백보다 두 배 이상의 주석이 있는 모든 blog entry들 찾기
@@ -925,15 +925,155 @@ Q(question__startswith='What')
 
 ## 모델 인스턴스 복사
 
+모델 인스턴스를 복사하기 위한 기본 제공 방법은 없음
 
+모든 필드 값을 복사하여 새 인스턴스를 쉽게 만들 수 있음
+
+
+
+`pk`를 None으로 설정
+
+- 가장 간단한 경우
+
+  ```python
+  blog = Blog(name='My blog', tagline='Blogging is easy')
+  # blog.pk == 1
+  blog.save()
+  
+  blog.pk = None
+  # blog.pk == 2
+  blog.save()
+  ```
+
+- 상속 사용
+
+  - Blog의 하위 클래스를 고려
+
+  ```python
+  class ThemeBlog(Blog):
+      theme = models.CharField(max_length=200)
+      
+  django_blog = ThemeBlog(name='Django', tagline='Django is easy', theme='python')
+  # django_blog.pk ==3
+  django_blog.save()
+  ```
+
+  - (상속 작동 방식으로 인해) `pk`와 `id`를 None으로 설정
+
+  ```python
+  django_blog.pk = None
+  django_blog.id = None
+  # django_blog.pk == 4
+  django_blog.save()
+  ```
+
+  - 모델의 데이터베이스 테이블에 포함되지 않은 관계를 복사하지 않음
+
+  ```python
+  # Entry에는 Author to ManyToManyField가 있음
+  # entry를 복제한 후에는 새 entry에 대해 다대다 관계를 설정해야 함
+  entry = Entry.objects.all()[0] # 몇몇 이전 entry
+  old_authors = entry.authros.all()
+  entry.pk = None
+  entry.save()
+  entry.authors.set(old_authors)
+  
+  # OneToOneField의 경우, 일대일 고유 제약조건을 위반하지 않도록 관련 객체를 복제하고 새 객체의 필드에 할당해야 함
+  # entry가 이미 위와 같이 복제되었다고 가정
+  detail = EntryDetail.objects.all()[0]
+  detail.pk = None
+  detail.entry = entry
+  detail.save()
+  ```
 
 
 
 ## 여러 객체를 한 번에 업데이트
 
+`update()` 메소드
+
+- QuerySet의 모든 객체에 대해 필드를 특정 값으로 설정하려는 경우
+
+  ```python
+  # 2007년 pub_date로 모든 headline 업데이트
+  Entry.objects.filter(
+  	pub_date__year=2007
+  ).update(
+  	headline='Everything is the same'
+  )
+  ```
+
+- 관계형이 아닌 필드와 `ForeignKey` 필드만 설정할 수 있음
+
+  - 비관계 필드를 업데이트: 새 값을 상수로 제공
+  - `ForeignKey` 필드를 업데이트: 새 값을 지정하려는 새 모델 인스턴스로 설정
+
+  ```shell
+  >>> b = Blog.objects.get(pk=1)
+  # 이 Blog에 속하도록 모든 Entry 변경
+  >>> Entry.objects.all().update(blog=b)
+  ```
+
+- 즉시 적용되며, 쿼리와 일치하는 행 수를 반환
+
+  - 일부 행에 이미 새 값이 있는 경우, 업데이트된 행 수와 같지 않을 수 있음
+
+  - 모델의 기본 테이블인 하나의 데이터베이스 테이블에만 액세스할 수 있음
+
+    - 관련 필드 기준으로 필터링할 수 있지만, 모델의 기본 테이블에서 열만 업데이트할 수 있음
+
+    - 업데이트되는 QuerySet에 대한 유일한 제한
+
+  ```shell
+  >>> b = Blog.objects.get(pk=1)
+  # 이 Blog에 속한 모든 headline 업데이트
+  >>> Entry.objects.select_related().filter(
+  	blog=b
+  ).update(
+  	headline='Everything is the same'
+  )
+  ```
+
+- SQL 문으로 직접 변환됨 (직접 업데이트를 위해)
+
+  - 모델에서 `save()` 메소드를 실행하거나 `pre_save` 또는 `post_save` 신호(`save()` 호출의 결과)를 내보내거나 `auto_now` 필드 옵션을 적용하지 않음
+  - QuerySet에 모든 항목을 저장하고 각 인스턴스에서 `save()` 메소드가 호출되도록 하기 위한 어떠한 특별한 기능도 필요하지 않음
+  - 반복하고 `save()` 호출
+
+  ```python
+  for item in my_queryset:
+      item.save()
+  ```
+
+- 업데이트 호출은 F 표현식 사용
+
+  - 모델의 다른 필드 값을 기반으로 한 필드를 업데이트
+  - 현재 값 기준으로 카운터를 증가시킬 때 특히 유용
+
+  ```shell
+  # blog의 모든 entry에 대해 핑백 수 늘리기
+  >>> Entry.objects.all().update(
+  	number_of_pingbacks=F('number_of_pingbacks') + 1
+  )
+  ```
+
+- filter와 exclude 절의 `F()` 객체와 달리, 업데이트에서 `F()` 객체를 사용할 때는 조인을 도입할 수 없음
+
+  - 업데이트 중인 모델의 로컬 필드만 참조할 수 있음
+  - `F()` 객체와의 조인을 시도하면 `FieldError` 발생
+
+  ```shell
+  # FieldError 발생
+  >>> Entry.objects.update(headline=F('blog__name'))
+  ```
+
 
 
 ## 관련 객체
+
+
+
+
 
 ### 일대다 관계
 
