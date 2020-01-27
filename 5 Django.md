@@ -147,7 +147,7 @@ mysite
 
       ```python
       STATIC_URL = '/static/'
-      STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+      STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
       ```
 
   - ALLOWED_HOSTS 설정
@@ -1638,4 +1638,4 @@ blog
       ```
 
       - 로그인했기 때문에, 페이지 새로고침을 해도 아무것도 표시되지 않음
-      - 링크와 아이콘 보이지 않음
+      - 링크와 아이콘 보이지 않음py
