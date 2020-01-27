@@ -599,47 +599,495 @@ Django
 
 ### 필터는 모델에 필드를 참조할 수 있다
 
-모델 필드의 값을 동일한 모델의 다른 필드와 비교
+`F()` 인스턴스
 
+- Django는 모델 필드의 값을 동일한 모델의 다른 필드와 비교하기 위해 **F 표현**을 제공
+- 쿼리 내 모델 필드에 대한 참조로 작동
+- 쿼리 필터에서 사용하여 동일한 모델 인스턴스에서 서로 다른 두 필드의 값을 비교
 
+```shell
+# 핑백보다 더 많은 주석이 있는 모든 blog entry들의 목록 찾기
+# 핑백 수를 참조하는 f() 객체를 구성하고 쿼리에서 해당 F() 객체를 사용
+>>> from django.db.models import F
+>>> Entry.objects.filter(
+	number_of_comments__gt=F('number_of_pingbacks')
+)
+```
+
+- Django는 (상수와 다른 `F()` 객체 둘 다와 함께) `F()` 객체를 사용하여 더하기, 빼기, 곱하기, 나누기, 모듈로 및 거듭 제곱 연산을 지원
+
+```shell
+# 핑백보다 두 배 이상의 주석이 있는 모든 blog entry들 찾기
+>>> Entry.objects.filter(
+	number_of_comments__gt=F('number_of_pingbacks') * 2
+)
+
+# entry의 등급이 핑백 수와 주석 수의 합보다 작은 모든 entry들 찾기
+>>> Entry.objects.filter(
+	rating__lt=F('number_of_comments') + F('number_of_pingbacks')
+)
+```
+
+- 이중 밑줄 표기법을 사용하여 `F()` 객체의 관계를 확장
+  - 밑줄이 이중인 `F()` 객체는 관련 객체에 액세스하는 데 필요한 조인을 소개
+
+```shell
+# author 이름이 blog 이름과 동일한 entry들 모두 찾기
+>>> Entry.objects.filter(
+	authors__name=F('blog__name')
+)
+```
+
+- 날짜 및 날짜/시간 필드의 경우, `timedelta` 객체를 추가하거나 뺄 수 있음
+
+```shell
+# 게시된 후 3일 이상 수정된 모든 entry들 찾기
+>>> from datetime import timedelta
+>>> Entry.objects.filter(
+	mod_date__gt=F('pub_date') + timedelta(days=3)
+)
+```
+
+- `.bitand()`, `.bitor()`, `.bitrightshift()` 및 `.bitleftshift()`에 의한 비트 연산을 지원
+
+```shell
+>>> F('somefield').bitand(16)
+```
 
 
 
 ### `pk` 조회 shortcut
 
+`pk` 조회
+
+- Django는 "기본 키"를 나타내는 `pk` 조회 shortcut을 제공
+
+```shell
+# Blog 모델에서 기본 키는 id 필드
+# 셋 다 동일한 명령문
+>>> Blog.objects.get(id__exact=14)
+>>> Blog.objects.get(id=14)
+>>> Blog.objects.get(pk=14)
+```
+
+- `pk` 사용은 `__exact` 쿼리로 제한되지 않음
+  - 모든 쿼리 용어를 `pk`와 결합하여 모델의 기본 키에서 쿼리를 수행할 수 있음
+
+```shell
+>>> Blog.objects.filter(pk__in=[1, 4, 7])
+>>> Blog.objects.filter(pk__gt=14)
+```
+
+- 조인에서도 작동
+
+```shell
+# 셋 다 동일한 문장
+>>> Entry.objects.filter(blog__id__exact=3)
+>>> Entry.objects.filter(blog__id=3)
+>>> Entry.objects.filter(blog__pk=3)
+```
+
+
+
 ### `LIKE` 문장에서 퍼센트 부호와 밑줄 이스케이프
+
+`LIKE` SQL 문과 같은 필드 조회
+
+- `iexact`, `contains`, `icontains`, `startswith`, `istartswith`, `endswith` 및 `iendswith`
+
+- `LIKE` 문에 사용된 두 개의 특수문자(퍼센트 부호 및 밑줄)를 자동으로 이스케이프
+
+- (`LIKE` 문에서) 백분율 기호와 밑줄은 모두 투명하게 처리됨
+
+  - 백분율 기호: 여러 문자 와일드 카드
+  - 밑줄: 단일 문자 와일트 카드
+
+  - 직관적으로 작동해야 하므로 추상화가 유출되지 않음
+
+  ```shell
+  # 백분율 기호가 포함된 모든 entry들 찾기
+  # 백분율 기호를 다른 문자로 사용
+  >>> Entry.objects.filter(headline__contains='%')
+  ```
+
+  ```sql
+  # Django는 인용을 처리함
+  SELECT ... WHERE headline LIKE '%\%%';
+  ```
+
+
 
 ### 캐싱 및 `QuerySet`
 
+각 QuerySet에는 데이터베이스 액세스를 최소화하기 위한 캐시가 포함되어 있음
+
+새로 작성된 QuerySet에서 캐시가 비어 있음
+
+QuerySet을 처음 평가할 때(데이터베이스 쿼리 발생), Django는 QuerySet의 캐시에 쿼리 결과를 저장하고 명시적으로 요청된 결과를 반환
+
+이후의 QuerySet 평가는 캐시된 결과를 재사용
+
+```shell
+# QuerySet을 작성하고 평가하여 버림
+# 동일한 데이터베이스 쿼리가 두 번 실행
+# 효과적으로 데이터베이스 로드가 두 배가 됨
+>>> print([e.headline for e in Entry.objects.all()])
+>>> print([e.pub_date for e in Entry.objects.all()])
+
+# 두 요청 사이에 순간적으로 Entry가 추가 또는 삭제되었을 수 있음
+# 두 목록에 동일한 데이터베이스 레코드가 포함되지 않을 수 있음
+# 이 문제를 피하기 위해 QuerySet을 저장하고 재사용
+>>> queryset = Entry.objects.all()
+>>> print([p.headline for p in queryset])
+>>> print([p.pub_date for p in queryset])
+```
+
+
+
 #### `QuerySet`이 캐시되지 않을 때
+
+QuerySet이 항상 결과를 캐시하지는 않음
+
+QuerySet의 일부만 평가할 때 캐시가 검사되지만, 채워지지 않으면 후속 쿼리에서 반환된 항목이 캐시되지 않음
+
+- 배열 슬라이스 또는 인덱스를 사용하여 QuerySet을 제한하면 캐시가 채워지지 않음
+
+```shell
+# QuerySet 객체에서 특정 인덱스를 반복적으로 가져옴
+>>> queryset = Entry.objects.all()
+# 데이터베이스를 쿼리
+>>> print(queryset[5])
+# 데이터베이스를 다시 쿼리
+>>> print(queryset[5])
+```
+
+전체 QuerySet이 이미 평가된 경우, 캐시가 대신 검사됨(캐시를 채움)
+
+```shell
+>>> queryset = Entry.objects.all()
+# 데이터베이스를 쿼리
+>>> [entry for entry in queryset]
+# 캐시 사용
+>>> print(queryset[5])
+# 캐시 사용
+>>> print(queryset[5])
+
+# 다른 작업의 예
+>>> [entry for entry in queryset]
+>>> bool(queryset)
+>>> entry in queryset
+>>> list(queryset)
+```
+
+QuerySet을 인쇄하는 것만으로는 캐시가 채워지지 않음
+
+- `__repr__()`에 대한 호출은 전체 QuerySet의 슬라이스만 반환하기 때문
 
 
 
 ## `Q` 객체가 포함된 복잡한 조회
 
+`filter()` 등의 키워드 인수 쿼리는 "AND"
 
+보다 복잡한 쿼리를 실행해야 하는 경우(`OR` 문이 있는 쿼리 등) **`Q` 객체**를 사용
+
+
+
+`Q` 객체(django.db.models.Q)
+
+- 키워드 인수 컬렉션을 캡슐화 하는데 사용되는 객체
+- 키워드 인수는 "필드 조회"와 같이 지정됨
+
+```python
+# 단일 LIKE 쿼리를 캡슐화하는 Q 객체
+from django.db.models import Q
+Q(question__startswith='What')
+```
+
+- `&` 및 `|`를 사용하여 `Q` 객체를 결합할 수 있음
+
+  - 연산자가 두 개의 `Q` 객체에 사용되면 새 `Q` 객체가 생성
+
+  ```python
+  # 두 개의 "question__startswith" 쿼리의 "OR"을 나타내는 단일 Q 객체를 생성
+  Q(question__startswith='Who') | Q(question__startswith='What')
+  ```
+
+  ```sql
+  # SQL에서 WHERE 절과 같음
+  WHERE question LIKE 'Who%' OR question LIKE 'What%'
+  ```
+
+- ~ 연산자를 사용하여 `Q` 객체를 무효화 할 수 있음
+
+  - 일반 쿼리와 부정(`NOT`) 쿼리를 모두 결합한 조합 조회
+
+  ```shell
+  Q(question__startswith='Who') | ~Q(pub_date__year=2005)
+  ```
+
+- 키워드 인수를 사용하는 각 조회 함수(`filter()`, `exclude()`, `get()`)에는 위치 (이름이 지정되지 않음) 인수로 하나 이상의 `Q` 객체가 전달될 수 있음
+
+  - 조회 함수에 여러 개의 `Q` 객체 인수를 제공하면 인수는 "AND"가 됨
+
+  ```python
+  Poll.objects.get(
+  	Q(question__startswith='Who'),
+      Q(pub_date=date(2005, 5, 2)) | Q(pub_date=date(2005, 5, 6))
+  )
+  ```
+
+  ```sql
+  # SQL로 변환
+  SELECT * from polls WHERE question LIKE 'Who%'
+  	AND (pub_date = '2005-05-02' OR pub_date = '2005-05-06')
+  ```
+
+- 조회 함수는 `Q` 객체와 키워드 인수를 혼합하여 사용할 수 있음
+
+  - 검색 함수에 제공된 모든 인수(키워드 인수 또는 `Q` 객체)는 "AND"로 함께 표시됨
+  - `Q` 객체가 제공되는 경우, 키워드 인수의 정의보다 우선해야 함
+
+  ```python
+  Poll.objects.get(
+  	Q(pub_date=date(2005, 5, 2)) | Q(pub_date=date(2005, 5, 6)),
+      question__startswith='Who'
+  )
+  ```
+
+  
 
 ## 객체 비교
+
+표준 Python 비교 연산자 ==
+
+- 두 모델 인스턴스를 비교
+- 두 모델의 기본 키 값을 비교 (비교는 항상 기본 키를 사용)
+
+```shell
+# 두 명령문은 동일
+>>> some_entry == other_entry
+>>> some_entry.id == other_entry.id
+
+# 모델의 기본 키를 id라고 부르지 않아도 문제 없음
+# 모델의 기본 키 필드를 name 이라고 하면 두 문장은 동일
+>>> some_obj == other_obj
+>>> some_obj.name == other_obj.name
+```
 
 
 
 ## 객체 삭제
 
+삭제 메소드 `delete()`
+
+- 즉시 오브젝트를 삭제하고, 삭제된 오브젝트 수와 오브젝트 유형 당 삭제 수가 있는 사전을 리턴
+
+  ```shell
+  >>> e.delete()
+  # (1, {'weblog.Entry': 1})
+  ```
+
+- 객체를 대량으로 삭제할 수 있음
+
+  - 모든 QuerySet에는 해당 QuerySet의 모든 멤버를 삭제하는 `delete()` 메소드가 있음
+
+  ```shell
+  # pub_date 연도가 2005인 모든 Entry 객체 삭제
+  >>> Entry.objects.filter(pub_date__year=2005).delete()
+  # (5, {'webapp.Entry': 5})
+  ```
+
+- 프로세스 중에 개별 객체 인스턴스의 `delete()` 메소드가 반드시 호출되는 것은 아님
+
+  - 가능할 때마다 순수하게 SQL로 실행됨
+  - 모델 클래스에 커스텀 `delete()` 메소드를 제공하고 호출됐는지 확인하려면 해당 모델의 인스턴스를 "수동으로" 삭제해야 함
+  - Django는 객체를 삭제하면 기본적으로 SQL 제약 조건 `ON DELETE CASCADE`의 동작을 모방함
+    - 삭제할 객체를 가리키는 외래 키가 있는 객체는 함께 삭제됨
+    - 계단식(cascade) 동작은 `on_delete` 인수를 통해 `ForeignKey`로 사용자 지정할 수 있음
+
+  ```python
+  b = Blog.objects.get(pk=1)
+  # Blog와 모든 해당 Entry 개체 삭제
+  b.delete()
+  ```
+
+- `Manager` 자체에 공개되지 않은 유일한 QuerySet 메소드
+
+  - 실수로 `Entry.objects.delete()`를 요청하고 모든 entry들을 삭제하지 못하게 하는 안전 메커니즘
+  - 모든 객체를 삭제하려면 전체 QuerySet을 명시적으로 요청해야 함
+
+  ```python
+  Entry.objects.all().delete()
+  ```
+
 
 
 ## 모델 인스턴스 복사
+
+모델 인스턴스를 복사하기 위한 기본 제공 방법은 없음
+
+모든 필드 값을 복사하여 새 인스턴스를 쉽게 만들 수 있음
+
+
+
+`pk`를 None으로 설정
+
+- 가장 간단한 경우
+
+  ```python
+  blog = Blog(name='My blog', tagline='Blogging is easy')
+  # blog.pk == 1
+  blog.save()
+  
+  blog.pk = None
+  # blog.pk == 2
+  blog.save()
+  ```
+
+- 상속 사용
+
+  - Blog의 하위 클래스를 고려
+
+  ```python
+  class ThemeBlog(Blog):
+      theme = models.CharField(max_length=200)
+      
+  django_blog = ThemeBlog(name='Django', tagline='Django is easy', theme='python')
+  # django_blog.pk ==3
+  django_blog.save()
+  ```
+
+  - (상속 작동 방식으로 인해) `pk`와 `id`를 None으로 설정
+
+  ```python
+  django_blog.pk = None
+  django_blog.id = None
+  # django_blog.pk == 4
+  django_blog.save()
+  ```
+
+  - 모델의 데이터베이스 테이블에 포함되지 않은 관계를 복사하지 않음
+
+  ```python
+  # Entry에는 Author to ManyToManyField가 있음
+  # entry를 복제한 후에는 새 entry에 대해 다대다 관계를 설정해야 함
+  entry = Entry.objects.all()[0] # 몇몇 이전 entry
+  old_authors = entry.authros.all()
+  entry.pk = None
+  entry.save()
+  entry.authors.set(old_authors)
+  
+  # OneToOneField의 경우, 일대일 고유 제약조건을 위반하지 않도록 관련 객체를 복제하고 새 객체의 필드에 할당해야 함
+  # entry가 이미 위와 같이 복제되었다고 가정
+  detail = EntryDetail.objects.all()[0]
+  detail.pk = None
+  detail.entry = entry
+  detail.save()
+  ```
 
 
 
 ## 여러 객체를 한 번에 업데이트
 
+`update()` 메소드
+
+- QuerySet의 모든 객체에 대해 필드를 특정 값으로 설정하려는 경우
+
+  ```python
+  # 2007년 pub_date로 모든 headline 업데이트
+  Entry.objects.filter(
+  	pub_date__year=2007
+  ).update(
+  	headline='Everything is the same'
+  )
+  ```
+
+- 관계형이 아닌 필드와 `ForeignKey` 필드만 설정할 수 있음
+
+  - 비관계 필드를 업데이트: 새 값을 상수로 제공
+  - `ForeignKey` 필드를 업데이트: 새 값을 지정하려는 새 모델 인스턴스로 설정
+
+  ```shell
+  >>> b = Blog.objects.get(pk=1)
+  # 이 Blog에 속하도록 모든 Entry 변경
+  >>> Entry.objects.all().update(blog=b)
+  ```
+
+- 즉시 적용되며, 쿼리와 일치하는 행 수를 반환
+
+  - 일부 행에 이미 새 값이 있는 경우, 업데이트된 행 수와 같지 않을 수 있음
+
+  - 모델의 기본 테이블인 하나의 데이터베이스 테이블에만 액세스할 수 있음
+
+    - 관련 필드 기준으로 필터링할 수 있지만, 모델의 기본 테이블에서 열만 업데이트할 수 있음
+
+    - 업데이트되는 QuerySet에 대한 유일한 제한
+
+  ```shell
+  >>> b = Blog.objects.get(pk=1)
+  # 이 Blog에 속한 모든 headline 업데이트
+  >>> Entry.objects.select_related().filter(
+  	blog=b
+  ).update(
+  	headline='Everything is the same'
+  )
+  ```
+
+- SQL 문으로 직접 변환됨 (직접 업데이트를 위해)
+
+  - 모델에서 `save()` 메소드를 실행하거나 `pre_save` 또는 `post_save` 신호(`save()` 호출의 결과)를 내보내거나 `auto_now` 필드 옵션을 적용하지 않음
+  - QuerySet에 모든 항목을 저장하고 각 인스턴스에서 `save()` 메소드가 호출되도록 하기 위한 어떠한 특별한 기능도 필요하지 않음
+  - 반복하고 `save()` 호출
+
+  ```python
+  for item in my_queryset:
+      item.save()
+  ```
+
+- 업데이트 호출은 F 표현식 사용
+
+  - 모델의 다른 필드 값을 기반으로 한 필드를 업데이트
+  - 현재 값 기준으로 카운터를 증가시킬 때 특히 유용
+
+  ```shell
+  # blog의 모든 entry에 대해 핑백 수 늘리기
+  >>> Entry.objects.all().update(
+  	number_of_pingbacks=F('number_of_pingbacks') + 1
+  )
+  ```
+
+- filter와 exclude 절의 `F()` 객체와 달리, 업데이트에서 `F()` 객체를 사용할 때는 조인을 도입할 수 없음
+
+  - 업데이트 중인 모델의 로컬 필드만 참조할 수 있음
+  - `F()` 객체와의 조인을 시도하면 `FieldError` 발생
+
+  ```shell
+  # FieldError 발생
+  >>> Entry.objects.update(headline=F('blog__name'))
+  ```
+
 
 
 ## 관련 객체
 
+모델에서 관계를 정의할 때(`ForeignKey`, `OneToOneField`, 또는 `ManyToMAnyField`), 해당 모델의 인스턴스에는 관련 객체에 액세스하기 위한 편리한 API가 있음
+
+- Entry 오브젝트 e:  blog 속성 `e.blog`에 액세스하여 연관된 Blog 오브젝트 얻기
+
+Django는 관계의 "다른" 측면에 대한 API 접근자를 만듦
+
+- Blog 오브젝트 b: entry_set 속성 `b.entry_set.all()`에 액세스하여 연관된 Entry 오브젝트 목록 얻기
+
+
+
 ### 일대다 관계
 
 #### Forward
+
+
+
+
 
 #### "backward" 관계 접근
 
