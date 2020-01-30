@@ -1,4 +1,4 @@
-
+[Django 공식문서 - Making queries](https://docs.djangoproject.com/en/3.0/topics/db/queries/) 정리본
 
 # 쿼리 만들기
 

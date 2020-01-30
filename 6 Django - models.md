@@ -1,3 +1,5 @@
+[Django 공식문서 - Models](https://docs.djangoproject.com/en/3.0/topics/db/models/) 정리본
+
 # Django - models
 
 ## Models

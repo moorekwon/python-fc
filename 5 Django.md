@@ -1,3 +1,5 @@
+[Django Girls Tutorial](https://tutorial.djangogirls.org/ko/django/) 정리본
+
 # Django란
 
 ## 장고란
