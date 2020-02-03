@@ -1085,24 +1085,300 @@ Django는 관계의 "다른" 측면에 대한 API 접근자를 만듦
 
 #### Forward
 
+모델에 `ForeignKey`가 있는 경우
 
+- 해당 모델의 인스턴스는 모델의 속성을 통해 관련 (외부) 객체에 액세스할 수 있음
+
+  ```shell
+  >>> e = Entry.objects.get(id=2)
+  # 관련 Blog 객체를 반환
+  >>> e.blog
+  ```
+
+- 외래 키 속성을 통해 가져오고 설정할 수 있음
+
+  - 외래 키에 대한 변경 사항은 `save()`를 호출할 때까지 데이터베이스에 저장되지 않음
+
+  ```shell
+  >>> e = Entry.objects.get(id=2)
+  >>> e.blog = some_blog
+  >>> e.save()
+  ```
+
+- `ForeignKey` 필드에 `null=True`가 설정(`NULL` 값을 허용)된 경우, 관계를 제거하기 위해 `None`을 할당할 수 있음
+
+  ```shell
+  >>> e = Entry.objects.get(id=2)
+  >>> e.blog = None
+  >>> e.save()
+  ```
+
+- 일대다 관계에 대한 정방향(forward) 액세스
+
+  - 관련 개체에 처음 액세스할 때 캐시됨
+  - 동일한 객체 인스턴스에서 외래 키에 대한 후속 엑세스가 캐시됨
+
+  ```shell
+  >>> e = Entry.objects.get(id=2)
+  # 데이터베이스를 조회하여 연관된 Blog 검색
+  >>> print(e.blog)
+  # 데이터베이스에 충돌하지 않음. 캐시된 버전을 사용
+  >>> print(e.blog)
+  ```
+
+- `select_relate() QuerySet` 메소드는 모든 일대다 관계의 캐시를 미리 재귀적으로 채움
+
+  ```shell
+  >>> e = Entry.objects.select_related().get(id=2)
+  # 데이터베이스에 충돌하지 않음. 캐시된 버전을 사용
+  >>> print(e.blog)
+  # 데이터베이스에 충돌하지 않음. 캐시된 버전을 사용
+  >>> print(e.blog)
+  ```
 
 
 
 #### "backward" 관계 접근
 
+모델에 `ForeignKey`가 있는 경우
+
+- 외래 키 모델의 인스턴스는 첫 번째 모델의 모든 인스턴스를 반환하는 `Manager`에 액세스할 수 있음
+
+  - 기본적으로 이 `Manager`의 이름은 `FOO_set` (`FOO`는 소스 모델 이름이며 소문자)
+
+  - 이 `Manager`는 필터링하고 조작할 수 있는 QuerySet들을 반환
+
+  ```shell
+  >>> b = Blog.objects.get(id=1)
+  # Blog와 관련된 모든 Entry 객체를 반환
+  >>> b.entry_set.all()
+  
+  # b.entry_set은 QuerySet들을 반환하는 Manager
+  >>> b.entry_set.filter(headline__contains='Lennon')
+  >>> b.entry_set.count()
+  ```
+
+- `ForeignKey` 정의에서 `related_name` 매개 변수를 설정하여 `FOO_set` 이름을 대체할 수 있음
+
+  ```shell
+  >>> blog = ForeignKey(
+  	Blog,
+  	on_delete=models.CASCADE,
+  	related_name='entries'
+  )
+  >>> b = Blog.objects.get(id=1)
+  # Blog와 관련된 모든 Entry 객체를 반환
+  >>> b.entries.all()
+  
+  # b.entries는 QuerySet들을 반환하는 Manager
+  >>> b.entries.filter(headline__contains='Lennon')
+  >>> b.entries.count()
+  ```
+
+
+
 #### 커스텀 리버스 매니저 사용
+
+`RelatedManager`
+
+- 기본적으로 역관계에 사용
+
+- 해당 모델에 대한 기본 관리자(default manager)의 서브 클래스
+
+- 주어진 쿼리에 다른 관리자 지정
+
+  ```python
+  from django.db import models
+  
+  class Entry(models.Model):
+      # 기본 관리자
+      objects = models.Manager()
+      # 맞춤 관리자
+      entries = EntryManager()
+    
+  # EntryManager가 get_queryset() 메소드에서 기본 필터링을 수행
+  b = Blog.objects.get(id=1)
+  # 해당 필터링은 all() 호출에 적용
+  b.entry_set(manager='entries').all()
+  ```
+
+- 사용자 정의 리버스 관리자를 지정하여 해당 사용자 정의 메소드를 호출할 수도 있음
+
+  ```python
+  b.entry_set(manager='entries').is_published()
+  ```
+
+
 
 #### 관련 개체를 처리하는 추가 방법
 
+`ForeignKey Manager`는 QuerySet 외에도 관련 객체 세트를 처리하는데 사용되는 추가 메소드가 존재
+
+- `add(obj1, obj2, ...)`
+
+  - 지정된 모델 객체를 관련 객체 세트에 추가
+
+- `create(**kwargs)`
+
+  - 새 객체를 만들어 저장하고, 관련 객체 세트에 넣음
+  - 새로 만든 개체를 반환
+
+- `remove(obj1, obj2, ...)`
+
+  - 관련 객체 세트에서 지정된 모델 객체를 제거
+
+- `clear()`
+
+  - 관련 객체 세트에서 모든 객체를 제거
+
+- `set(objs)`
+
+  - 관련 개체 세트를 교체
+
+  ```python
+  b = Blog.objects.get(id=1)
+  # e1, e2는 Entry 인스턴스
+  b.entry_set.set([e1, e2])
+  ```
+
+  - 관련 세트의 멤버를 지정하려면, 반복 가능한 객체 인스턴스와 함께 사용
+    - `clear()` 메소드를 사용할 수 있는 경우
+      - iterable(목록)의 모든 객체가 세트에 추가되기 전에 기존 객체가 `entry_set`에서 제거
+    - `clear()` 메소드를 사용할 수 없는 경우
+      - iterable의 모든 객체가 기존 요소를 제거하지 않고 추가
+
+
+
+각 "역방향(reverse)" 작업
+
+- 데이터베이스에 즉시 영향을 줌
+- 모든 추가, 작성 및 삭제는 즉시 자동으로 데이터베이스에 저장
+
+
+
 ### 다대다 관계
+
+다대다 관계의 양쪽 끝은 다른쪽 끝에 자동 API 액세스를 얻음
+
+API는 일대다 관계의 "backwrad"와 유사하게 작동
+
+속성 이름 지정
+
+- `ManyToManyField`를 정의하는 모델: 해당 필드 자체의 속성 이름을 사용
+
+- "역(reverse)"모델: 원래 모델의 소문자 모델 이름과 '`_set`'을 사용
+
+  ```python
+  e = Entry.objects.get(id=3)
+  # 이 Entry에 대한 모든 Author 객체를 반환
+  e.authors.all()
+  e.authors.count()
+  e.authors.filter(name__contains='John')
+  
+  a = Author.objects.get(id=5)
+  # 이 Author에 대한 모든 Entry 객체를 반환
+  a.entry_set.all()
+  ```
+
+- `related_name`을 지정할 수 있음
+
+  - `Entry`의 `ManytoManyField`가 `related_name='entries'`를 지정한 경우, 각 `Author` 인스턴스는 `entry_set` 대신 `entries` 속성을 가짐
+
+- 다대다 관계의 `add()`, `set()` 및 `remove()` 메소드는 기본 키 값을 허용
+
+  ```python
+  a = Author.objects.get(id=5)
+  # e1, e2는 Entry 인스턴스
+  a.entry_set.set([e1, e2])
+  # set() 호출은 동일하게 작동
+  a.entry_set.set([e1.pk, e2.pk])
+  ```
+
+
 
 ### 일대일 관계
 
+다대일 관계와 매우 유사
+
+모델에서 `OneToOneField`를 정의
+
+- 해당 모델의 인스턴스는 모델의 속성을 통해 관련 객체에 액세스할 수 있음
+
+  ```python
+  class EntryDetail(models.Model):
+      entry = models.OneToOneField(Entry, on_delete=models.CASCADE)
+      details = models.TextField()
+      
+  ed = EntryDetail.objects.get(id=2)
+  # 관련 Entry 객체를 반환
+  ed.entry
+  ```
+
+- "역방향(reverse)" 쿼리
+
+  - 일대일관계의 관련 모델이 `Manager` 객체에 액세스할 때 해당 `Manager`는 객체 모음이 아닌 단일 객체를 나타냄
+
+  ```python
+  e = Entry.objects.get(id=2)
+  # 관련 EntryDetail 객체를 반환
+  # 관계에 객체가 할당되어 있지 않으면, Django는 DoesNotExist 예외를 발생
+  e.entrydetail
+  ```
+
+- 순방향 관계를 지정할 때와 같은 방법으로 인스턴스를 역관계에 지정할 수 있음
+
+  ```python
+  e.entrydetail = ed
+  ```
+
+
+
 ### backward 관계는 어떻게 가능할까?
 
-### 관련 개체에 대한 쿼리
+다른 객체 관계형 매퍼는 양쪽에 관계를 정의해야 함
+
+Django는 한쪽 끝의 관계만 정의하면 됨
+
+- Django 개발자는 DRY(Don't Repeat Yourself) 원칙을 위반한다고 생각
+
+
+
+`app_registry`
+
+- 모델 클래스가 다른 모델 클래스가 로드될 때까지 어떤 다른 모델 클래스가 관련되어 있는지 알지 못할 경우
+- Django가 시작되면 `INSTALLED_APPS`에 나열된 각 응용 프로그램을 가져온 다음, 각 응용 프로그램 내부의 모델 모듈을 가져옴
+- 새로운 모델 클래스가 생성될 때마다 관련 모델에 역관계를 추가
+- 관련 모델을 아직 가져오지 않은 경우, 관계를 추적하고 관련 모델을 가져올 때 관계를 추가
+- 사용 중인 모든 모델을 `INSTALLED_APPS`에 나열된 응용 프로그램에서 정의하지 않으면, 이전 관계가 제대로 작동하지 않을 수 있음
+
+
+
+### 관련 객체에 대한 쿼리
+
+일반 값 필드와 관련된 쿼리와 동일한 규칙을 따름
+
+- 일치하는 쿼리 값을 지정할 때, 객체 인스턴스 자체 또는 객체의 기본 키 값을 사용
+
+  ```python
+  # id=5인 Blog 객체 b가 있는 경우, 세 쿼리는 모두 동일
+  
+  # 객체 인스턴스를 사용하여 쿼리
+  Entry.objects.filter(blog=b)
+  # 인스턴스에서 id를 사용하여 쿼리
+  Entry.objects.filter(blog=b.id)
+  # id를 직접 사용하여 쿼리
+  Entry.objects.filter(blog=5)
+  ```
 
 
 
 ## 원시 SQL로 폴백
+
+Django의 데이터베이스 매퍼가 처리하기 너무 복잡한 SQL 쿼리를 작성해야 하는 경우, 직접 SQL을 작성할 수 있음
+
+- Django에는 쿼리를 작성하기 위한 몇가지 옵션이 있음
+
+Django 데이터베이스 계층은 데이터베이스에 대한 인터페이스일 뿐
+
+- 다른 도구, 프로그래밍 언어 또는 데이터베이스 프레임워크를 통해 데이터베이스에 액세스할 수 있음
+- 데이터베이스에 대해 Django 고유의 것은 없음
