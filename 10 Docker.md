@@ -279,3 +279,67 @@
 ## moby dock
 
 로고는 고래
+
+
+
+## 도커 설치
+
+
+
+
+
+### Linux
+
+### 가상머신에 설치
+
+### 설치 확인
+
+
+
+## 컨테이너 실행
+
+### ubuntu 16.04 container
+
+### redis container
+
+### MySQL 5.7 container
+
+### WordPress container
+
+### tensorflow
+
+
+
+## 도커 기본 명령어
+
+### 컨테이너 목록 확인 (ps)
+
+### 컨테이너 중지 (stop)
+
+### 컨테이너 제거 (rm)
+
+### 이미지 목록 확인 (images)
+
+### 이미지 다운로드 (pull)
+
+### 이미지 삭제 (rmi)
+
+
+
+## 컨테이너 둘러보기
+
+### 컨테이너 로그 보기 (logs)
+
+### 컨테이너 명령어 실행 (exec)
+
+
+
+## 컨테이너 업데이트
+
+
+
+## Docker Compose
+
+### 설치
+
+### wordpress 만들기
