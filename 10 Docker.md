@@ -1,4 +1,4 @@
-[초보를 위한 도커 안내서](https://subicuacom/2017/01/19/docker-guide-for-beginners-1.html) 정리본
+[초보를 위한 도커 안내서](https://subicura.com/2017/01/19/docker-guide-for-beginners-1.html) 정리본
 
 # Docker
 
@@ -109,6 +109,11 @@
 이미지를 실행한 상태
 
 추가되거나 변하는 값은 컨테이너에 저장됨
+
+종료되어도 삭제되지 않고 남아있음
+
+- 종료된 건 다시 시작할 수 있고, 컨테이너의 읽기/쓰기 레이어는 그대로 존재
+- 명시적인 삭제로 컨테이너 제거
 
 
 
@@ -286,49 +291,263 @@
 
 ## 도커 설치
 
+도커는 리눅스 컨테이너 기술
 
+- macOS나 windows에 설치할 경우, 가상머신에 설치됨
 
 
 
 ### Linux
 
+자동 설치 스크립트 이용
+
+`curl -fsSL https://get.docker.com/ | sudo sh`
+
+`sudo docker version`
+
+
+
+#### sudo 없이 사용
+
+도커는 기본적으로 root 권한이 필요
+
+root가 아닌 사용자가 sudo 없이 사용하려면, 해당 사용자를 `docker` 그룹에 추가
+
+`sudo usermod -aG docker $USER`: 현재 접속 중인 사용자에게 권한 주기
+
+`sudo usermod -aG docker your-user`: your-user 사용자에게 권한 주기
+
+
+
+#### 주의사항
+
+1. 가급적 최신 버전으로 업데이트
+   - kernel 버전이 낮을 경우, 제대로 동작하지 않을 수 있음
+   - 도커 실행을 위한 kernel 버전은 3.10x 이상
+
+2. ubuntu나 centos가 아닌 경우, 다른 방법으로 설치
+
+
+
 ### 가상머신에 설치
 
+Docker machine
+
+- Docker for ... 을 사용하지 못하는 경우
+
+- 처음부터 사용하면 환경이 혼란스러울 수 있음
+
+- Virtual Box나 VMware 같은 가상머신에 리눅스를 설치하고, 리눅스에 접속하여 도커를 사용하는 것을 권장
+
+
+
 ### 설치 확인
+
+`docker version`: client와 server 정보가 정상적으로 출력되었다면 설치 완료
+
+
+
+도커
+
+- 하나의 실행파일이지만, 실제로 client와 server 역할을 각각 할 수 있음
+- 도커 커맨드를 입력하면 도커 client가 도커 server로 명령을 전송하고 결과를 받아 터미널에 출력
+- 기본값이 도커 server의 소켓을 바라보고 있음
+  - 사용자는 바로 명령을 내리는 것 같은 느낌을 받음
+- mac이나 windows의 터미널에서 명령어를 입력했을 때 가상 서버에 설치된 도커가 동작하는 이유
 
 
 
 ## 컨테이너 실행
 
+- ubuntu 16.04 container
+- redis container
+- MySQL 5.7 container
+- WordPress container
+- tensorflow
+
+
+
+도커를 실행하는 명령어
+
+`docker run [OPTIONS] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]`
+
+옵션
+
+- `-d`: detached mode, 백그라운드 모드
+- `-p`: 호스트와 컨테이너의 포트를 연결 (포워딩)
+- `-v`: 호스트와 컨테이너의 디렉토리를 연결 (마운트)
+- `-e`: 컨테이너 내에서 사용할 환경변수 설정
+- `--name`: 컨테이너 이름 설정
+- `--rm`: 프로세스 종료 시 컨테이너 자동 제거
+- `-it`: `-i` + `-t`, 터미널 입력을 위한 옵션
+- `--link`: 컨테이너 연결 [컨테이너명:별칭]
+
+
+
 ### ubuntu 16.04 container
 
-### redis container
+ubuntu 16.04 컨테이너를 생성하고, 컨테이너 내부에 들어가기
 
-### MySQL 5.7 container
+`docker run ubuntu:16.04`
 
-### WordPress container
+- `run`
 
-### tensorflow
+  - 컨테이너를 실행하는 명령어
+
+  - 사용할 이미지가 저장되어 있는지 확인
+  - 없으면 다운로드(`pull`)한 후 컨테이너 생성(`create`) 및 시작(`start`)
+
+- `ubuntu:16.04` 이미지를 다운받은 적이 없기 때문에, 이미지를 다운로드한 후 컨테이너가 실행
+
+- 컨테이너는 정상적으로 실행됐지만, 명령어를 전달하지 않았기 때문에 생성되자마자 종료
+
+  - 실행 중인 프로세스가 없으면 컨테이너는 종료
+
+
+
+`docker run --rm -it ubuntu:16.04 /bin/bash`
+
+- `--rm`: 프로세스가 종료되면 컨테이너가 자동으로 삭제
+- `-it`: 키보드 입력
+
+- `/bin/bash`: 컨테이너 내부에 들어가기 위해 bash 쉘 실행
+- 이전에 이미지를 다운받았기 때문에, 이미지를 다운로드하는 화면 없이 바로 실행
+
+`root@~:/# ls`, `root@~:/# cat /etc/issue`
+
+- ubuntu 리눅스 확인
+
+`root@~:/# exit`
+
+- bash 쉘 종료와 함께 컨테이너도 같이 종료
 
 
 
 ## 도커 기본 명령어
 
+컨테이너의 상태를 살펴보고, 어떤 이미지가 설치되어 있는지 확인하기
+
+
+
 ### 컨테이너 목록 확인 (ps)
+
+`docker ps [OPTIONS]`
+
+- `ps`
+  - 실행 중인 컨테이너 목록을 보여줌
+  - detached mode로 실행 중인 컨테이너들을 보여줌
+  - 어떤 이미지를 기반으로 만들었고, 어떤 포트와 연결되어 있는지 등 간단한 내용을 보여줌
+- 옵션
+  - `-a`: 종료된 컨테이너까지 보여줌 (Exited (O))
+
+
 
 ### 컨테이너 중지 (stop)
 
+`docker stop [OPTIONS] CONTAINER [CONTAINER...]`
+
+- 옵션
+  - 특별한 것 없이, 실행 중인 컨테이너를 하나 또는 여러 개(띄어쓰기로 구분) 중지할 수 있음
+- 컨테이너의 ID 또는 이름을 입력
+
+
+
+(실행했었던) tensorflow 컨테이너 중지하기
+
+`docker ps`: 컨테이너 ID 얻음
+
+`docker stop ${TENSORFLOW_CONTAINER_ID}`
+
+- 도커 ID의 전체 길이는 64자리
+- 명령어의 인자로 전달할 때는 전부 입력하지 않아도 됨
+- 앞부분이 겹치지 않으면 1~2자만 입력해도 됨
+
+`docker ps -a`: 모든 컨테이너를 봄으로써 종료 확인
+
+
+
 ### 컨테이너 제거 (rm)
+
+종료된 컨테이너 완전히 제거
+
+`docker rm [OPTIONS] CONTAINER [CONTAINER...]`
+
+- 옵션
+  - 특별한 것 없이, 종료된 컨테이너를 하나 또는 여러 개 삭제할 수 있음
+- 호스트 OS는 아무런 흔적도 남지 않고, 컨테이너만 격리된 상태로 실행되었다가 삭제
+
+
+
+종료된 ubuntu 컨테이너와 tensorflow 컨테이너 삭제하기
+
+`docker pos -a`: 컨테이너 ID 얻음
+
+`docker rm ${UBUNTU_CONTAINER_ID} ${TENSORFLOW_CONTAINER_ID}`
+
+`docker ps -a`: 종료 확인
+
+
+
+중지된 컨테이너의 ID를 가져와 한번에 삭제
+
+`docker rm -v $(docker ps -a -q -f status=exited)`
+
+- 중지된 컨테이너를 일일이 삭제하기 귀찮은 경우
+
+
 
 ### 이미지 목록 확인 (images)
 
+도커가 다운로드한 이미지 목록 보기
+
+`docker images [OPTIONS] [REPOSITORY[:TAG]]`
+
+- 이미지 주소, 태그, ID, 생성 시점, 용량이 보임
+- 이미지가 쌓일수록 용량을 차지하기 때문에 사용하지 않는 이미지는 지우는 것이 좋음
+
+
+
 ### 이미지 다운로드 (pull)
 
+`docker pull [OPTIONS] NAME[:TAG|@DIGEST]`
+
+
+
+`ubuntu:14.04` 다운받기
+
+`docker pull ubuntu:14.04`
+
+- `pull`
+  - 최신 버전으로 다시 다운받음
+  - 같은 태그지만 이미지가 업데이트된 경우 새로 다운받음
+
+
+
 ### 이미지 삭제 (rmi)
+
+`docker rmi [OPTIONS] IMAGE [IMAGE...]`
+
+- `images` 명령어를 통해 얻은 이미지 목록에서 이미지 ID를 입력
+- 컨테이너가 실행 중인 이미지는 삭제되지 않음
+- 컨테이너는 이미지들의 레이어를 기반으로 실행중이기 때문에 당연히 삭제할 수 없음
+
+
+
+더이상 사용하지 않는 tensorflow의 이미지 제거하기
+
+`docker images`: 이미지 ID 얻음
+
+`docker rmi ${TENSORFLOW_IMAGE_ID}`
+
+- 여러 개의 레이어로 구성된 이미지가 삭제됨으로써, 모든 레이어 삭제
 
 
 
 ## 컨테이너 둘러보기
+
+
+
+
 
 ### 컨테이너 로그 보기 (logs)
 
