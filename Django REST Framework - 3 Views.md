@@ -107,12 +107,114 @@ API 뷰의 플러그가능한 측면을 제어하는 속성
 
 ## Function Based Views(함수 기반 뷰)
 
+REST framework
 
+- 일반 함수 기반 뷰로 작업할 수도 있음
+- 함수 기반 뷰를 래핑하여 (일반적인 Django `HttpRequest` 대신) `Request` 인스턴스를 수신하고 (Django `HttpRequest` 대신) `Response`를 리턴하도록 하는 간단한 데코레이터 세트를 제공
+- 요청 처리 방법을 구성할 수 있음
+
+
+
+```python
+
+```
 
 
 
 ### @api_view()
 
+`@api_view(http_method_names=['GET'])`
+
+- 핵심은 `api_view` 데코레이터
+- 뷰가 응답해야 하는 HTTP 메소드 목록을 가져옴
+
+
+
+데이터를 수동으로 리턴하는 뷰 작성
+
+```python
+from rest_framework.decorators import api_view
+
+@api_view()
+def hello_world(request):
+    return Response({"message": "Hello, world!"})
+```
+
+- setttings에 지정된 기본 renderer, 파서, 인증 클래스 등을 사용
+- 기본적으로 `GET` 메소드만 허용 (다른 메소드는 "405 Method Not Allowed"로 응답)
+
+
+
+뷰가 허용하는 메소드를 지정
+
+```python
+@api_view(['GET', 'POST'])
+def hello_world(request):
+    if request.method == 'POST':
+        return Response({"message": "Got some data!", "data": request.data})
+    return Response({"message": "Hellow, world!"})
+```
+
+
+
 ### API policy decorators(API 정책 데코레이터)
 
+REST framework
+
+- 기본 설정을 재정의하기 위해 뷰에 추가할 수 있는 추가 데코레이터 세트를 제공
+- `@api_view` 데코레이터 뒤(아래)에 와야 함
+- 사용가능한 데코레이터 (하나의 인수를 취하고, 리스트 또는 튜플이어야 함)
+  - `@renderer_classes(...)`
+  - `@parser_classes(...)`
+  - `@authentication_classes(...)`
+  - `@throttle_classes(...)`
+  - `@permission_classes(...)`
+
+
+
+스로틀을 사용하여 뷰 작성
+
+```python
+from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.throttling import UserRateThrottle
+
+# 특정 사용자가 하루에 한 번만 호출
+class OncePerDayUserThrottle(UserRateThrottle):
+    rate = '1/day'
+    
+@api_view(['GET'])
+# @throttle_classes 데코레이터를 사용하여 스로틀 클래스 목록을 전달
+@throttle_classes([OncePerDayUserThrottle])
+def view(request):
+    return Response({"message": "Hello for today! See you tomrrow!"})
+```
+
+- `APIView` 서브클래스에 설정된 속성에 해당하는 데코레이터
+
+
+
 ### View schema decorator
+
+`@schema` 데코레이터
+
+- 함수 기반 뷰의 기본 스키마 생성을 무시할(override) 수 있음
+- `@api_view` 데코레이터 뒤(아래)에 와야 함
+
+
+
+```python
+from rest_framework.decorators import api_view, schema
+from rest_framework.schemas import AutoSchema
+
+class CustomAutoSchema(AutoSchema):
+    def get_link(self, path, method, base_url):
+        # 뷰 내부검사를 무시
+        
+@api_view(['GET'])
+@schema(CustomAutoSchema())
+def view(request):
+    return Response({"message": "HEllow for today! See you tomorrow!"})
+```
+
+- 단일 `AutoSchema` 인스턴스, `AutoSchema` 하위 클래스 인스턴스 또는 `ManualSchema` 인스턴스를 사용하는 데코레이터
+- 스키마 생성에서 뷰를 제외하기 위해 `None`을 전달할 수 있음
