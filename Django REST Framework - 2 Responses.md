@@ -1,3 +1,5 @@
+[Django REST framework 공식문서 - Responses]( https://www.django-rest-framework.org/api-guide/responses/  ) 정리본
+
 # Responses
 
 REST framework의 `Response` 클래스

@@ -1,3 +1,5 @@
+[Django REST framework 공식문서 - Requests](  https://www.django-rest-framework.org/api-guide/requests/ ) 정리본
+
 # Requests
 
 REST framework의 `Request` 클래스
