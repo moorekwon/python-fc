@@ -117,12 +117,6 @@ REST framework
 
 
 
-```python
-
-```
-
-
-
 ### @api_view()
 
 `@api_view(http_method_names=['GET'])`
