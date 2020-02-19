@@ -16,7 +16,7 @@ REST framework에서 제공하는 generic views
 
 - generic view가 API 요구에 맞지 않는 경우
 
-  - `APIView` 클래스를 사용하여 드롭다운하거나, generic view에서 사용하는 mixin과 기본 클래스를 재사용하여 고유의 재사용 가능한 generic view 세트를 구성할 수 있음
+  - `APIView` 클래스를 사용하여 드롭다운하거나, generic view에서 사용하는 mixin과 기본 클래스를 재사용하여 고유의 재사용 가능한 generic view 셋를 구성할 수 있음
 
 - 일반적으로 뷰를 재정의하고 여러 클래스 속성을 설정
 
@@ -94,17 +94,70 @@ REST framework의 `APIView` 클래스를 확장
 
 ##### Pagination
 
+목록 뷰와 함께 사용될 때 페이지매김(pagination)을 제어하는 데 사용되는 속성
 
+- `pagination_class`
+  - 목록 결과를 페이지매김할 때 사용하는 클래스
+  - 기본값은 `DEFAULT_PAGINATION_CLASS` 설정과 동일한 값(`rest_framework.pagination.PageNumberPagination`)
+  - `pagination_class=None`을 설정하면, 이 뷰에서 페이지매김이 비활성화됨
 
 
 
 ##### Filtering
+
+- `filter_backends`
+  - 쿼리셋을 필터링하는 데 사용하는 필터 백엔드 클래스 목록
+  - 기본값은 `DEFAULT_FILTER_BACKENDS` 설정과 동일한 값
 
 
 
 #### Methods
 
 ##### Basic methods
+
+`get_queryset(self)`
+
+- 목록 뷰에 사용하고 상세 뷰에서 조회의 기준으로 사용하는 쿼리 집합을 반환
+
+- `queryset` 속성으로 지정된 쿼리 집합을 반환하도록 기본 설정
+
+- (`self.queryset`에 직접 액세스하는 대신) 항상 사용해야 함
+
+  - `self.queryset`은 한 번만 평가되고 결과는 모든 후속 요청에 대해 캐시됨
+
+- 요청한 사용자에게 고유한 쿼리셋 반환과 같은 동적 동작을 제공하도록 재정의(override) 가능
+
+  ```python
+  def get_queryset(self):
+      user = self.request.user
+      return user.accounts.all()
+  ```
+
+  
+
+`get_object(self)`
+
+- 상세 뷰에 사용하는 객체 인스턴스를 반환
+
+- 기본 쿼리셋을 필터링하기 위해 `lookup_field` 매개 변수를 사용하도록 기본 설정
+
+- 둘 이상의 URL kwarg에 기반한 객체 조회 등 보다 복잡한 동작을 제공하도록 재정의 가능
+
+  ```python
+  def 
+  ```
+
+  
+
+`filter_queryset(self, queryset)`
+
+`get_serializer_clasS(self)`
+
+
+
+
+
+목록보기에 사용해야하고 상세보기에서 조회의 기준으로 사용해야하는 쿼리 집합을 반환합니다. queryset 속성으로 지정된 쿼리 세트를 반환하도록 기본 설정됩니다. self.queryset은 한 번만 평가되고 결과는 모든 후속 요청에 대해 캐시되므로이 메소드는 self.queryset에 직접 액세스하는 대신 항상 사용해야합니다. 요청한 사용자에게 고유 한 쿼리 세트 반환과 같은 동적 동작을 제공하도록 재정의 될 수 있습니다.
 
 ##### Save and deletion hooks
 
