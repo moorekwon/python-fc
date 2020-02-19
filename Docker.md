@@ -513,22 +513,257 @@ ubuntu 16.04 컨테이너를 생성하고, 컨테이너 내부에 들어가기
 
 ## 컨테이너 둘러보기
 
-
+`log`, `exec` 명령어
 
 
 
 ### 컨테이너 로그 보기 (logs)
 
+로그를 통하여 컨테이너가 정상적으로 동작하는지 확인
+
+`docker logs [OPTIONS] CONTAINER`
+
+- 기본 옵션
+  - `docker logs ${WORDPRESS_CONTAINER_ID}`
+    - 기존에 생성해놓은 워드프레스 컨테이너 로그 확인
+    - 전체 로그를 전부 다 출력
+- `-f` 옵션
+  - `docker logs --tail 10 ${WORDPRESS_CONTAINER_ID}`
+    - 마지막 10줄만 출력
+- `--tail` 옵션
+  - `docker logs -f ${WORDPRESS_CONTAINER_ID}`
+    - 실시간으로 로그가 생성되는 것을 확인
+    - 로그를 켜놓은 상태에서 워드프레스 페이지를 새로고침하면 브라우저 접속 로그가 실시간으로 보임
+    - 로그 보기를 중지하려면 `ctral` + `c` 입력
+
+
+
+#### 로그에 대해 좀 더 자세히
+
+도커는 표준 스트림(Standard streams) 중 `stdout`, `stderr`을 수집
+
+- 로그 파일을 자동으로 알아채는 것이 아님
+
+- 컨테이터에서 실행되는 프로그램의 로그 설정을 (파일이 아닌) 표준 출력으로 바꾸어야 함
+
+- 출력 방식만 바꾸는 것으로 모든 컨테이너는 로그에 대해 같은 방식으로 관리할 수 있게 됨
+
+
+
+컨테이너의 로그 파일은 json 방식으로 (어딘가에) 저장됨
+
+- 도커는 다양한 플러그인을 지원하여 json이 아닌 특정 로그 서비스에 스트림을 전달
+- 앱의 규모가 커지면 기본적인 방식 대신 로그 서비스 이용을 고려
+- 로그가 많으면 은근히 파일이 차지하는 용량이 커지므로 주의
+
+
+
 ### 컨테이너 명령어 실행 (exec)
+
+실행 중인 컨테이너에 들어가 보거나 컨테이너 파일을 실행하고 싶은 경우
+
+- docker의 `exec` 명령어 실행 (예전에는 'nsenter' 프로그램 이용)
+
+- 컨테이너에 `SSH`를 설치하는 것은 권장하지 않음
+
+
+
+`docker exec [OPTIONS] CONTAINER COMMAND [ARG...]`
+
+- `run` 명령어와의 차이
+  - `run`: 새로 컨테이너를 만들어서 실행
+  - `exec`: 실행 중인 컨테이너에 명령어를 내림
+
+
+
+실행 중인 `MySQL` 컨테이너에 접속
+
+```bash
+# 키보드 입력이 필요하여 -it 옵션을 줌
+# bash shell로 접속
+docker exec -it mysql /bin/bash
+# MySQL 테스트
+mysql -uroot
+```
+
+```mysql
+mysql> show databases;
+mysql> quit
+```
+
+```bash
+exit
+```
+
+바로 `mysql` 명령어 실행
+
+```bash
+docker exec -it mysql -uroot
+```
+
+- 호스트 OS에 mysql을 설치하지 않아도 mysql 클라이언트를 사용할 수 있음
+- 복잡한 작업이 필요없는 경우, `-it` 옵션 없이 단순하게 명령을 실행하고 종료
 
 
 
 ## 컨테이너 업데이트
 
+컨테이너를 새로운 버전으로 업데이트 하기
+
+
+
+도커에서 컨테이너를 업데이트
+
+- 새 버전의 이미지를 다운(`pull`)받고 기존 컨테이너를 삭제(`stop`, `rm`)
+- 새 이미지를 기반으로 새 컨테이너를 실행(`run`)
+
+컨테이너를 삭제
+
+- 컨테이너에서 생성된 파일이 사라짐
+
+  - 데이터베이스라면, 그동안 쌓였던 데이터가 모두 사라짐
+  - 웹 애플리케이션이라면, 그동안 사용자가 업로드한 이미지가 모두 사라짐
+
+- 유지해야 하는 데이터는 반드시 컨테이너 (내부가 아닌) 외부 스토리지에 저장해야 함
+
+  - AWS S3와 같은 클라우드 서비스 이용 (가장 좋은 방법)
+
+  - 데이터 볼륨(Data volumes)을 컨테이너에 추가해 사용
+
+    - 해당 디렉토리는 컨테이너와 별도로 저장
+
+    - 호스트의 디렉토리를 마운트해서 사용하는 방법
+
+      - MySQL의 경우, `/var/lib/mysql` 디렉토리에 모든 데이터베이스 정보가 담기므로, 호스트의 특정 디렉토리를 연결해줌
+
+      ```bash
+      docker run -d -p 3306:3306 \
+      	-e MYSQL_ALLOW_EMPTY_PASSWORD=true \
+      	--name mysql \
+      	# -v 옵션 사용 -> 볼륨 마운트
+      	# /my/own/datadir 디렉토리를 컨테이너의 /var/lib/mysql 디렉토리로 마운트
+      	-v /my/own/datadir:/var/lib/mysql \
+      	mysql:5.7
+      ```
+
+      - 데이터베이스 파일은 호스트의 `/my/own/datadir` 디렉토리에 저장됨
+      - 컨테이너를 삭제해도 데이터는 사라지지 않음
+      - 최신 버전의 MySQL 이미지를 다운받고 다시 컨테이너를 실행할 때, 동일한 디렉토리를 마운트하면 그대로 데이터를 사용할 수 있음
+
 
 
 ## Docker Compose
 
+컨테이너 조합이 많아지고 여러가지 설정이 추가되면 명령어가 금방 복잡해짐
+
+도커는 **Docker Compose** 툴을 제공
+
+- 복잡한 설정을 쉽게 관리
+- YAML 방식의 설정파일을 이용
+
+
+
 ### 설치
 
+설치 파일 하나 다운받으면 됨(리눅스)
+
+```shell
+curl -L "https://github.com/docker/compose/releases/download/1.9.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+docker-compose version
+```
+
+
+
 ### wordpress 만들기
+
+compose를 이용하여 wordpress 만들기
+
+- 기존에는 명령어로 만들었음
+- 명령어를 설정파일로 바꾸어 가독성과 편리성 향상
+
+
+
+1. 빈 디렉토리를 하나 만들고, `docker-compose.yml` 파일을 만들어 설정 입력
+
+   ```yml
+   version: '2'
+   
+   services:
+   	db:
+   		image: mysql:5.7
+   		volumes:
+   			- db_data:/var/lib/mysql
+   		restart: always
+   		environment:
+   			MYSQL_ROOT_PASSWORD: wordpress
+   			MYSQL_DATABASE: wordpress
+   			MYSQL_USER: wordpress
+   			MYSQL_PASSWORD: wordpress
+   			
+   	wordpress:
+   		depends_on:
+   			- db
+   		image: wordpress:latest
+   		volumes:
+   			- wp_data:/var/www/html
+   		ports:
+   			- "8000:80"
+   		restart: always
+   		environment:
+   			WORDPRESS_DB_HOST: db:3306
+   			WORDPRESS_DB_PASSWORD: wordpress
+   volumes:
+   	db_data:
+   	wp_data:
+   ```
+
+2. 실행
+
+   ```bash
+   docker-compose up
+   ```
+
+
+
+## 도커 이미지 만들기
+
+도커는 이미지를 만들기 위해 컨테이너의 상태를 그대로 이미지로 저장
+
+
+
+
+
+### Sinatra 웹 애플리케이션 샘플
+
+### Ruby Application Dockerfile
+
+### Docker build
+
+### Dockerfile 기본 명령어
+
+### Build 분석
+
+### 도커 이미지 리팩토링
+
+
+
+## 이미지 저장소
+
+### Docker Hub
+
+### Private Docker Registry
+
+
+
+## 배포
+
+### 컨테이너 배포 방식
+
+### 컨테이너 업데이트
+
+### 배포에 대해 더 알아보기
+
+
+
+## 마무리
