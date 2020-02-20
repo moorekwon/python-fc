@@ -487,20 +487,45 @@ class RetrieveUserView(MultipleFieldLookupMixin, generics.RetrieveAPIView):
 
 
 
-### Creating custom base classes(커스텀 기본 클래스 작성)
+### Creating custom base classes(커스텀 베이스 클래스 작성)
 
-여러 뷰에서 mixin을 사용하는 경우, 프로젝트 전체에서 사용할 수 있는 고유한 기본 뷰셋을 작성할 수 있음
+여러 뷰에서 mixin을 사용하는 경우, 프로젝트 전체에서 사용할 수 있는 고유한 기본 뷰셋 작성
+
+프로젝트 전체에 걸쳐 많은 뷰에서 일관되게 반복해야 하는 커스텀 동작이 있는 경우 사용하기 좋음
 
 ```python
-class 
+class BaseRetrieveView(MultipleFieldLookupMixin, generics.RetrieveAPIView):
+    pass
+
+class BaseRetrieveUpdateDestroyView(MultipleFieldLookupMixn, generics.RetrieveUpdateDestroyAPIView):
+    pass
 ```
 
 
 
 ## PUT as create
 
+버전 3.0 이전의 REST framework mixin
+
+- 객체가 이미 존재하는지 여부에 따라 `PUT`을 갱신(update) 또는 작성(create) 오퍼레이션으로 처리
+- `PUT`을 작성 오퍼레이션으로 허용하는 것은 문제
+  - 객체의 존재 유무에 대한 정보를 반드시 노출시킴
+  - 이전에 삭제된 인스턴스를 투명하게 다시 생성하는 것이 단순히 `404` 응답을 리턴하는 것보다 더 나은 기본 동작이라는 보장이 없음
+
+버전 3.0부터 더 간단하고 명확해짐
+
+- "`PUT` as 404" 및 "`PUT` as create" 스타일은 서로 다른 상황에서 유효할 수는 있으나, 이제 404 동작을 기본값으로 사용
+- PUT-as-create 동작을 일반화해야하는 경우
+  - `AllowPUTAsCreateMixin` 클래스와 같은 것을 뷰의 mixin으로 포함할 수 있음
+
 
 
 ## Third party packages
 
+추가 generic view 구현을 제공하는 타사 패키지
+
+
+
 ### Django Rest Multiple Models
+
+단일 API 요청을 통해 여러 직렬화된 모델 and/or 쿼리셋을 전송하기 위한 generic view(및 mixin)를 제공
