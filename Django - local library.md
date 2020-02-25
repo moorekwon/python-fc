@@ -331,9 +331,45 @@ urlpatterns = []
 
 ## 개요
 
+모델
+
+- Python 객체
+
+- Django 웹 애플리케이션들은 모델을 통해 데이터에 접속하고 관리
+- 저장된 데이터의 구조를 정의
+  - 필드 타입, 데이터의 최대 크기, 기본값, 선택-리스트 옵션, 문서를 위한 도움 텍스트, 폼을 위한 라벨 텍스트, 등등
+- database와 소통하는 것은 Django가 해줌
+
 
 
 ## LocalLibrary models 디자인
+
+어떤 데이터를 저장할 것인가?
+
+- 책에 관한 정보들: 제목, 요약, 저자, 작성된 언어, 분류, ISBN
+- 여러 개의 사본을 사용할 수 있어야 함: 고유 ID, 가용성 상태, 등
+- 저자에 관한 정보들
+- 정보 정렬: 책 제목, 저자, 언어, 분류
+
+다른 객체들에 대한 관계를 어떻게 지정할 것인가?
+
+- 관계 설정: 일대일(`OneToOneField`), 일대다(`ForeignKey`), 다대다(`ManyToManyField`) 관계
+
+
+
+모델 디자인
+
+- 각각의 객체마다 분리된 모델을 가지는 것이 타당
+- 객체들: **책, 책 인스턴스, 저자**
+  - 책(Book): 책의 일반적인 세부 사항등
+  - 책 인스턴스(BookInstance): 시스템에서 사용 가능한 책의 특정 (물리적) 복사본 상태
+    - `BookInstance:statsus`에 대한 모델을 생성하지 않고 (변하지 않는) 값들을 하드코딩
+  - 저자(Author)
+- 모델을 사용해 선택-리스트 옵션을 나타내도록 함
+  - 모든 옵션을 미리 알 수 없거나 옵션이 변할 수 있을 때 추천
+  - 모델들: **책 장르, 언어**
+    - 장르(Genre): 값들이 관리자 인터페이스에서 생성 및 선택 가능하도록 함
+    - 언어(Language)
 
 
 
@@ -341,9 +377,74 @@ urlpatterns = []
 
 ### 모델 정의
 
+모델들은 보통 애플리케이션의 `models.py` 파일에서 정의
+
+`django.db.models.Model`의 서브클래스로 구현
+
+필드, 메소드, 메타데이터를 포함할 수 있음
+
+
+
+```python
+from django.db import models
+
+# MyModelName 모델
+# Model 클래스에서 파생된 모델을 정의하는 클래스
+class MyModelName(models.Model):
+    # 필드
+    my_field_name = models.CharField(max_length=20, help_text='Enter field documentation')
+    
+    # 메타데이터
+    class Meta:
+        ordering = ['-my_field_name']
+        
+    # 메소드
+    # MyModelName의 특정 인스턴스에 액세스하기 위한 URL을 반환
+    def get_absolute_url(self):
+        return reverse('model-detail-view', args=[str(self.id)])
+    
+    # MyModelName 객체를 나타내는 문자열
+    def __str__(self):
+        return self.field_name
+```
+
+
+
 #### 필드(Fields)
 
+database 목록(table)에 저장하길 원하는 데이터 열(column)을 나타냄
+
+각각의 database 레코드(행, row)는 각 필드 값들 중 하나로 구성
+
+
+
+`my_field_name = models.CharField(max_length=20, help_text='Enter field documentation')`
+
+- `my_field_name` 필드를 갖고 있고, `models.CharField` 타입
+  - 영숫자 문자열을 포함하는 필드
+- 인수
+  - `max_length=20`: 값의 최대 길이는 20자
+  - `help_text='Enter field documentation'`: HTML 양식(form)에서 사용자들에게 입력될 때 어떤 값을 입력해야 하는지 알려주기 위해 보여주는 텍스트 라벨
+- 라벨
+  - 필드 변수 이름의 첫자를 대문자로 바꾸고 밑줄을 공백으로 바꿔 기본 라벨을 추정
+    - 'My field name'을 기본 라벨로 갖고 있음
+  - 인수로 지정된 라벨(`verbose_name`)을 가질 수도 있음
+
+
+
 ##### 일반적인(common) 필드 인수
+
+(대부분의) 서로 다른 필드 타입들을 선언할 때 사용 가능
+
+- `help_text`
+- `verbose_name`
+- `default`
+- `null`
+- `blank`
+- `choices`
+- `primary_key`
+
+
 
 ##### 일반적인(common) 필드 타입
 
