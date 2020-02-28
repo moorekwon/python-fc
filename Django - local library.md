@@ -462,21 +462,236 @@ database 목록(table)에 저장하길 원하는 데이터 열(column)을 나타
 
 ## LocalLibrary 모델 정의
 
+`models.py` 파일에서 도서관을 위한 모델을 정의
+
+```python
+# /locallibrary/catalog/models.py
+# 표준 코드(boilerplate)
+# 모델이 상속받을 모델 기본 클래스 models.Model을 포함하는 models 모듈 가져옴(import)
+from django.db import models
+```
+
+
+
 ### Genre 모델
+
+책 카테고리에 관한 정보를 저장하는 데 사용되는 모델
+
+장르를 자유 텍스트나 선택 목록으로 만들지 않고 모델을 이용해 생성
+
+- 값들이 하드코딩되기보다 database를 통해 관리되도록 함
+
+```python
+# 책 장르를 나타내는 모델
+class Genre(models.Model):
+    # 장르의 이름을 나타내는 CharField 필드
+    # 200자로 제한, 몇 가지 help_text를 가짐
+    name = models.CharField(max_length=200, help_text='Enter a book genre')
+    
+    # __str__() 메소드 선언
+    # 특정 레코드에 의해 정의된 장르의 이름을 반환
+    # verbose name이 정의되지 않았기 때문에, 필드는 form에서 Name으로 호출(call)
+    # Model 객체를 나타내는 문자열
+    def __str__(self):
+        return self.name
+```
+
+
 
 ### Book 모델
 
+일반적으로 사용 가능한 책에 대한 모든 정보들을 보여주는 모델
+
+대여 가능한 특정 (물리적) "인스턴스"나 "복사본"은 보여주지 않음
+
+```python
+# URL 패턴을 반대로 하여 URL을 생성하는 데 사용
+from django.urls import reverse
+
+# 책을 나타내는 모델 (책의 특정 사본은 아님)
+class Book(models.Model):
+    title = models.CharField(max_length=200)
+
+    # 각각의 책은 하나의 저자만 가지고, 저자는 여러 개의 책들을 가짐
+    # Author 클래스가 파일에서 아직 선언되지 않았기 때문에, 객체가 아닌 문자열로 작성
+    author = models.ForeignKey('Author', on_delete=models.SET_NULL, null=True)
+    
+    # 텍스트가 상당히 길 것임
+    summary = models.TextField(max_length=1000, help_text='Enter a brief description of the book')
+    
+    # 이름을 지정하지 않은 첫번째 매개변수를 사용해 라벨을 "ISBN"으로 지정
+    # 만약 지정하지 않았다면, 기본 라벨을 "Isbn"
+    isbn = models.CharField('ISBN', max_length=13, help_text='13 Character <a href="https://www.isbn-international.org/">ISBN number</a>')
+    
+    # 책이 여러 개의 장르를 가지고, 장르도 여러 개의 책을 가질 수 있음
+    # Genre 클래스가 이미 정의되어 있기 때문에, 객체를 지정할 수 있음
+    genre = models.ManyToManyField(Genre, help_text='Select a genre for this book')
+    
+    language= models.ForeignKey('Language', on_delete=models.SET_NULL, null=True)
+    
+    # Book 레코드를 나타내는 책의 title 필드를 사용해 정의
+    def __str__(self):
+        return self.title
+    
+    # 이 모델의 세부 레코드(상세 정보)에 접근하기 위한 URL을 반환
+    # 'book-detail' 이름의 URL 매핑을 정의하고, 관련 뷰와 템플릿을 정의해야 함
+    def get_absolute_url(self):
+        return reverse('book-detail', args=[str(self.id)])
+```
+
+- Genre와 Author 모델 클래스
+
+  - `ManyToManyField`와 `ForeignKey` 필드 타입 안에서 관련
+
+  -  모델 클래스가 관련된 모델의 이름을 포함하는 문자열을 사용해 이름 없는 첫번째 매개변수로 선언
+  - 연관된 클래스가 참조되기 전에 파일 안에서 아직 정의되지 않았다면 모델의 이름을 문자열로 사용
+
+- author 필드
+
+  - `null=True`
+    - 어떤 저자도 선택되지 않으면 database에 `Null` 값을 저장
+  - `on_delete=models.SET_NULL`
+    - 관련된 author 레코드가 삭제됐을 때 author 값을 `Null`로 설정
+
+
+
 ### BookInstance 모델
 
+누군가 빌릴지도 모를 특정한 책의 본사본을 나타내는 모델
+
+복사본 사용 가능 여부, 되돌려받을 수 있는 날짜, 출판사(imprint) 또는 버전 세부 사항, 도서관에 있는 책의 고유 id 정보를 포함
+
+```python
+고유한 book instance에 필요
+import uuid
+
+# (도서관에서 빌릴 수 있는) 책의 특정 사본을 나타내는 모델
+class BookInstance(models.Model):
+    # id 필드가 이 모델의 primary key로 설정되는 데 사용
+    # 각 인스턴스에 전역적으로 고유한 값을 할당 (도서관에서 찾을 수 있는 모든 책마다)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, help_text='Unique ID for this particular book across whole library')
+    
+    # 연관된 Book을 식별하기 위한 필드
+    # 각각의 책은 많은 복사본을 가지고, 복사본은 하나의 Book만 가짐
+    book = models.ForeignKey('Book', on_delete=models.SET_NULL, null=True) 
+    
+    # 책의 출판사(특정 발간일)를 나타내기 위한 필드
+    imprint = models.CharField(max_length=200)
+    
+    # 책이 빌려지거나 유지보수된 이후 사용할 수 있을 것으로 예상되는 날짜
+    # 책을 사용할 수 있는 경우 필요(null이나 blank가 될 수 있음)
+    due_back = models.DateField(null=True, blank=True)
+
+    # key-value 쌍의 튜플을 포함하는 튜플
+    # value는 사용자가 선택할 수 있는 표시값, key는 선택됐을 때 실제로 저장되는 값
+    LOAN_STATUS = (
+        ('m', 'Maintenance'),
+        ('o', 'On loan'),
+        ('a', 'Available'),
+        ('r', 'Reserved'),
+    )
+
+    # 선택/선택 목록을 정의
+    # LOAN_STATUS 튜플을 정의해 choices 인자에 전달
+    # 책이 선반에 저장되기 전에는 사용할 수 없기 때문에 기본값 'm' 설정
+    status = models.CharField(
+        max_length=1,
+        choices=LOAN_STATUS,
+        blank=True,
+        default='m',
+        help_text='Book availability',
+    )
+
+    # 메타데이터 모델
+    class Meta:
+        # 레코드들이 쿼리에서 반환됐을 때 레코드들을 정렬
+        ordering = ['due_back']
+
+    # 고유 id와 연관된 Book의 제목을 조합해 BookInstance 객체를 나타냄
+    def __str__(self):
+        return f'{self.id} ({self.book.title})'
+```
+
+
+
 ### Author 모델
+
+저자의 이름, 성, 생일, (선택적으로) 사망일을 가진 모델
+
+```python
+# 저자를 나타내는 모델
+class Author(models.Model):
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    date_of_birth = models.DateField(null=True, blank=True)
+    date_of_death = models.DateField('Died', null=True, blank=True)
+
+    class Meta:
+        ordering = ['last_name', 'first_name']
+    
+    # 특정 author instance에 접근하기 위한 URL을 반환
+    # URL을 가져오기 위해 'author-detail' URL 매핑을 반대로 함
+    def get_absolute_url(self):
+        return reverse('author-detail', args=[str(self.id)])
+
+    def __str__(self):
+        return f'{self.last_name}, {self.first_name}'
+```
+
+
+
+### Language 모델
+
+```python
+# 언어를 나타내는 모델
+class Language(models.Model):
+    name = models.CharField(max_length=200,
+                            help_text="Enter the book's natural language")
+
+    def __str__(self):
+        return self.name
+```
 
 
 
 ## database migration 재실행
 
+모든 모델이 생성된 후, database migration을 재실행하여 모델들을 database에 추가
+
+```shell
+python3 manage.py makemigrations
+python3 manage.py migrate
+```
+
 
 
 # Django admin site
+
+## 개요
+
+## Models 등록
+
+## Superuser 생성
+
+## 관리자 계정에 로그인
+
+## 추가 설정
+
+### ModelAdmin 클래스 등록
+
+### 목록 뷰들 설정
+
+### 목록 필터 추가
+
+### 세부 뷰 레이아웃 조직
+
+#### 어떤 필드들이 보여지고 배치될지 제어
+
+#### 세부 뷰 구역나누기
+
+### 연관 레코드들의 인라인 편집
+
+
 
 # Creating our home page
 
